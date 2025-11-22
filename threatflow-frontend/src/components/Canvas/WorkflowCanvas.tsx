@@ -19,6 +19,7 @@ import ReactFlow, {
   Edge,
   NodeChange,
   EdgeChange,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -44,7 +45,9 @@ const WorkflowCanvas: React.FC = () => {
   const deleteStoreNode = useWorkflowState((state) => state.deleteNode);
   const deleteStoreEdge = useWorkflowState((state) => state.deleteEdge);
   const setSelectedNode = useWorkflowState((state) => state.setSelectedNode);
+  const addNode = useWorkflowState((state) => state.addNode);
   const { loading: isExecuting, uploadProgress } = useWorkflowExecution();
+  const { screenToFlowPosition } = useReactFlow();
 
   // Local state for React Flow - synced with Zustand store
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<any>[]>(storeNodes as Node<any>[]);
@@ -140,6 +143,33 @@ const WorkflowCanvas: React.FC = () => {
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, [setSelectedNode]);
+
+  // Handle drop on canvas
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const type = event.dataTransfer.getData('application/reactflow');
+      if (!type) return;
+
+      // Use React Flow's built-in screenToFlowPosition for accurate positioning
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      // Import nodeFactory here to avoid circular imports
+      const { nodeFactory } = require('../../utils/nodeFactory');
+
+      // Create new node using factory
+      const createNode = nodeFactory[type as keyof typeof nodeFactory];
+      if (createNode) {
+        const newNode = createNode(position);
+        addNode(newNode as any);
+      }
+    },
+    [addNode, screenToFlowPosition]
+  );
 
   // Keyboard shortcuts and accessibility
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -270,6 +300,7 @@ const WorkflowCanvas: React.FC = () => {
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
+          onDrop={onDrop}
           nodeTypes={nodeTypes}
           fitView
           snapToGrid={true}

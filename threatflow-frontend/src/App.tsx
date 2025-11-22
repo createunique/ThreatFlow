@@ -12,43 +12,9 @@ import PropertiesPanel from './components/Sidebar/PropertiesPanel';
 import ExecuteButton from './components/ExecutionPanel/ExecuteButton';
 import StatusMonitor from './components/ExecutionPanel/StatusMonitor';
 import ErrorBoundary from './components/ErrorBoundary';
-import { useWorkflowState } from './hooks/useWorkflowState';
-import { nodeFactory } from './utils/nodeFactory';
 import 'reactflow/dist/style.css';
 
 function AppContent() {
-  const addNode = useWorkflowState((state) => state.addNode);
-
-  // Handle drop on canvas
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-
-      const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
-
-      // Calculate drop position (adjust for canvas offset)
-      const reactFlowBounds = (event.target as HTMLElement)
-        .closest('.react-flow')
-        ?.getBoundingClientRect();
-
-      if (!reactFlowBounds) return;
-
-      const position = {
-        x: event.clientX - reactFlowBounds.left - 140,
-        y: event.clientY - reactFlowBounds.top - 50,
-      };
-
-      // Create new node using factory
-      const createNode = nodeFactory[type as keyof typeof nodeFactory];
-      if (createNode) {
-        const newNode = createNode(position);
-        addNode(newNode as any);
-      }
-    },
-    [addNode]
-  );
-
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -78,7 +44,6 @@ function AppContent() {
         {/* Center - Workflow Canvas */}
         <Box
           sx={{ flexGrow: 1, position: 'relative' }}
-          onDrop={onDrop}
           onDragOver={onDragOver}
         >
           <ErrorBoundary name="Workflow Canvas">
