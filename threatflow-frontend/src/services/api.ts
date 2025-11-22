@@ -6,6 +6,7 @@
 import axios, { AxiosInstance, AxiosError, AxiosProgressEvent } from 'axios';
 import {
   AnalyzerInfo,
+  AnalyzersResponse,
   ExecuteWorkflowResponse,
   JobStatusResponse,
   CustomNode,
@@ -115,11 +116,12 @@ export const api = {
 
   /**
    * Get available analyzers from IntelOwl
+   * Returns both available and unavailable analyzers with container detection info
    * @param type - Filter by 'file' or 'observable'
    */
-  getAnalyzers: async (type?: 'file' | 'observable'): Promise<AnalyzerInfo[]> => {
+  getAnalyzers: async (type?: 'file' | 'observable'): Promise<AnalyzersResponse> => {
     const params = type ? { type } : {};
-    const response = await apiClient.get<AnalyzerInfo[]>('/api/analyzers', { params });
+    const response = await apiClient.get<AnalyzersResponse>('/api/analyzers', { params });
     return response.data;
   },
 

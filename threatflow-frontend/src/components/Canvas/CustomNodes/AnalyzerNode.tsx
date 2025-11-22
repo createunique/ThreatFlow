@@ -1,21 +1,20 @@
 import React, { FC, useState, useEffect, memo } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
-import { Shield, AlertCircle, X } from 'lucide-react';
+import { Shield, AlertCircle, X, Edit2 } from 'lucide-react';
 import {
   Box,
   Typography,
   Paper,
-  Select,
-  MenuItem,
-  FormControl,
   CircularProgress,
-  SelectChangeEvent,
   IconButton,
   Tooltip,
+  Button,
+  Chip,
 } from '@mui/material';
 import ErrorBoundary from '../../ErrorBoundary';
+import AnalyzerSelectionModal from '../../Sidebar/AnalyzerSelectionModal';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
-import { AnalyzerNodeData, AnalyzerInfo } from '../../../types/workflow';
+import { AnalyzerNodeData, AnalyzerInfo, AnalyzersResponse } from '../../../types/workflow';
 import { api } from '../../../services/api';
 
 // Singleton to prevent duplicate API calls
@@ -28,10 +27,11 @@ const fetchAnalyzersOnce = async (): Promise<AnalyzerInfo[]> => {
   }
   
   if (!analyzersFetchPromise) {
-    analyzersFetchPromise = api.getAnalyzers('file').then(data => {
-      cachedAnalyzers = data;
+    analyzersFetchPromise = api.getAnalyzers('file').then((response: AnalyzersResponse) => {
+      // Combine available and unavailable analyzers
+      cachedAnalyzers = [...response.available, ...response.unavailable];
       analyzersFetchPromise = null;
-      return data;
+      return cachedAnalyzers;
     });
   }
   
@@ -42,6 +42,7 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
   const [analyzers, setAnalyzers] = useState<AnalyzerInfo[]>(cachedAnalyzers || []);
   const [loading, setLoading] = useState(!cachedAnalyzers);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const { setNodes } = useReactFlow();
   const updateNode = useWorkflowState((state) => state.updateNode);
@@ -81,191 +82,219 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
     };
   }, []);
 
-  const handleAnalyzerChange = (event: SelectChangeEvent<string>) => {
+  const handleAnalyzerSelect = (analyzer: AnalyzerInfo) => {
     try {
-      const analyzerName = event.target.value;
-      const analyzer = analyzers.find((a) => a.name === analyzerName);
+      // Update React Flow state directly for immediate UI update
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                analyzer: analyzer.name,
+                description: analyzer.description,
+                analyzerType: analyzer.type,
+              },
+            };
+          }
+          return node;
+        })
+      );
 
-      if (analyzer) {
-        // Update React Flow state directly for immediate UI update
-        setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === id) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  analyzer: analyzer.name,
-                  description: analyzer.description,
-                  analyzerType: analyzer.type,
-                },
-              };
-            }
-            return node;
-          })
-        );
+      // Also update Zustand store for persistence
+      updateNode(id, {
+        analyzer: analyzer.name,
+        description: analyzer.description,
+        analyzerType: analyzer.type,
+      });
 
-        // Also update Zustand store for persistence
-        updateNode(id, {
-          analyzer: analyzer.name,
-          description: analyzer.description,
-          analyzerType: analyzer.type,
-        });
-      }
+      setModalOpen(false);
     } catch (error) {
-      console.error('Error changing analyzer:', error);
+      console.error('Error selecting analyzer:', error);
       throw error; // Let error boundary catch it
     }
   };
 
+  const handleOpenModal = () => {
+    if (!loading) {
+      setModalOpen(true);
+    }
+  };
+
   return (
-    <Paper
-      elevation={selected ? 8 : 2}
-      sx={{
-        padding: 2,
-        minWidth: 280,
-        maxWidth: 300,
-        border: selected ? '2px solid #4caf50' : '1px solid #ccc',
-        borderRadius: 2,
-        backgroundColor: '#fff',
-        position: 'relative',
-      }}
-      role="region"
-      aria-label={`Analyzer node ${selected ? '(selected)' : ''}${data.analyzer ? ` - ${data.analyzer} selected` : ' - no analyzer selected'}`}
-    >
-      {/* Handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="input"
-        style={{
-          background: '#4caf50',
-          width: 12,
-          height: 12,
-          border: '2px solid #fff',
+    <>
+      <Paper
+        elevation={selected ? 8 : 2}
+        sx={{
+          padding: 2,
+          minWidth: 280,
+          maxWidth: 320,
+          border: selected ? '2px solid #4caf50' : '1px solid #ccc',
+          borderRadius: 2,
+          backgroundColor: '#fff',
+          position: 'relative',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: selected ? 8 : 4,
+          },
         }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="output"
-        style={{
-          background: '#4caf50',
-          width: 12,
-          height: 12,
-          border: '2px solid #fff',
-        }}
-      />
+        role="region"
+        aria-label={`Analyzer node ${selected ? '(selected)' : ''}${data.analyzer ? ` - ${data.analyzer} selected` : ' - no analyzer selected'}`}
+      >
+        {/* Handles */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="input"
+          style={{
+            background: '#4caf50',
+            width: 12,
+            height: 12,
+            border: '2px solid #fff',
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="output"
+          style={{
+            background: '#4caf50',
+            width: 12,
+            height: 12,
+            border: '2px solid #fff',
+          }}
+        />
 
-      {/* Header */}
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <Shield size={20} color="#4caf50" />
-        <Typography variant="subtitle1" fontWeight="bold">
-          Analyzer
-        </Typography>
-        <Box sx={{ flexGrow: 1 }} />
-        <Tooltip title="Delete node (Del)" placement="top">
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteNode(id);
-            }}
-            sx={{
-              color: '#666',
-              '&:hover': {
-                color: '#f44336',
-                backgroundColor: '#ffebee',
-              },
-              width: 24,
-              height: 24,
-            }}
-            aria-label="Delete analyzer node"
-          >
-            <X size={14} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* Analyzer Selection */}
-      {loading ? (
-        <Box display="flex" justifyContent="center" py={2} role="status" aria-label="Loading analyzers">
-          <CircularProgress size={24} aria-hidden="true" />
-        </Box>
-      ) : error ? (
-        <Box display="flex" alignItems="center" gap={1} color="error.main" role="alert" aria-live="assertive">
-          <AlertCircle size={16} aria-hidden="true" />
-          <Typography variant="caption">{error}</Typography>
-        </Box>
-      ) : (
-        <FormControl 
-          fullWidth 
-          size="small"
-          role="group"
-          aria-label="Analyzer selection"
-        >
-          <Select
-            value={data.analyzer || ''}
-            onChange={handleAnalyzerChange}
-            displayEmpty
-            className="nodrag"
-            sx={{ 
-              backgroundColor: '#fafafa',
-              '& .MuiSelect-select': {
-                py: 1,
-              }
-            }}
-            MenuProps={{
-              PaperProps: {
-                style: {
-                  maxHeight: 300,
+        {/* Header */}
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Shield size={20} color="#4caf50" />
+          <Typography variant="subtitle1" fontWeight="bold">
+            Analyzer
+          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Tooltip title="Delete node (Del)" placement="top">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteNode(id);
+              }}
+              sx={{
+                color: '#666',
+                '&:hover': {
+                  color: '#f44336',
+                  backgroundColor: '#ffebee',
                 },
-              },
-            }}
-            aria-label={`Select analyzer for analysis. Currently ${data.analyzer || 'none'} selected.`}
-            aria-describedby={data.analyzer ? "selected-analyzer-info" : undefined}
-          >
-            <MenuItem value="" disabled aria-label="Please select an analyzer">
-              <em>Select Analyzer...</em>
-            </MenuItem>
-            {analyzers.map((analyzer) => (
-              <MenuItem 
-                key={analyzer.name} 
-                value={analyzer.name}
-                aria-label={`${analyzer.name}: ${analyzer.description}`}
-              >
-                <Box>
-                  <Typography variant="body2">{analyzer.name}</Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap>
-                    {analyzer.description.substring(0, 50)}
-                    {analyzer.description.length > 50 ? '...' : ''}
-                  </Typography>
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
-
-      {/* Selected Analyzer Info */}
-      {data.analyzer && (
-        <Box 
-          mt={2} 
-          p={1.5} 
-          sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}
-          id="selected-analyzer-info"
-          role="region"
-          aria-label={`Selected analyzer information: ${data.analyzer}`}
-        >
-          <Typography variant="caption" fontWeight="bold" display="block" mb={0.5}>
-            {data.analyzer}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            {data.description || 'No description available'}
-          </Typography>
+                width: 24,
+                height: 24,
+              }}
+              aria-label="Delete analyzer node"
+            >
+              <X size={14} />
+            </IconButton>
+          </Tooltip>
         </Box>
-      )}
-    </Paper>
+
+        {/* Analyzer Selection */}
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={2} role="status" aria-label="Loading analyzers">
+            <CircularProgress size={24} aria-hidden="true" />
+          </Box>
+        ) : error ? (
+          <Box display="flex" alignItems="center" gap={1} color="error.main" role="alert" aria-live="assertive">
+            <AlertCircle size={16} aria-hidden="true" />
+            <Typography variant="caption">{error}</Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+            }}
+          >
+            {/* Selection Button */}
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleOpenModal}
+              startIcon={<Edit2 size={18} />}
+              sx={{
+                textTransform: 'none',
+                color: data.analyzer ? '#4caf50' : '#666',
+                borderColor: data.analyzer ? '#4caf50' : '#ccc',
+                backgroundColor: data.analyzer ? '#f1f8f4' : '#fafafa',
+                '&:hover': {
+                  borderColor: '#4caf50',
+                  backgroundColor: '#e8f5e9',
+                },
+                py: 1,
+              }}
+              aria-label={`Select analyzer (currently ${data.analyzer || 'none'} selected)`}
+            >
+              {data.analyzer ? 'Change Analyzer' : 'Select Analyzer'}
+            </Button>
+
+            {/* Analyzer Count Badge */}
+            <Chip
+              label={`${analyzers.filter(a => a.available).length}/${analyzers.length} analyzers available`}
+              size="small"
+              variant="outlined"
+              sx={{
+                width: 'fit-content',
+                mx: 'auto',
+                fontSize: '0.75rem',
+              }}
+            />
+          </Box>
+        )}
+
+        {/* Selected Analyzer Info */}
+        {data.analyzer && (
+          <Box 
+            mt={2} 
+            p={1.5} 
+            sx={{
+              backgroundColor: '#f0f8f4',
+              borderRadius: 1,
+              border: '1px solid #c8e6c9',
+            }}
+            id="selected-analyzer-info"
+            role="region"
+            aria-label={`Selected analyzer information: ${data.analyzer}`}
+          >
+            <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: '#4caf50',
+                }}
+              />
+              <Typography variant="caption" fontWeight="bold" sx={{ color: '#2e7d32' }}>
+                {data.analyzer}
+              </Typography>
+            </Box>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              {data.description || 'No description available'}
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+      {/* Analyzer Selection Modal */}
+      <AnalyzerSelectionModal
+        open={modalOpen}
+        analyzers={analyzers}
+        loading={loading}
+        error={error}
+        selectedAnalyzer={data.analyzer || null}
+        onSelect={handleAnalyzerSelect}
+        onClose={() => setModalOpen(false)}
+      />
+    </>
   );
 };
 

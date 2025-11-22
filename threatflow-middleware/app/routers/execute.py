@@ -64,8 +64,8 @@ async def get_job_status(job_id: int):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/analyzers", response_model=List[Dict[str, Any]])
+@router.get("/analyzers", response_model=Dict[str, Any])
 async def list_analyzers(type: str = None):
-    """List available IntelOwl analyzers"""
+    """List available IntelOwl analyzers with availability detection"""
     analyzers = await intel_service.get_available_analyzers(type)
     return analyzers

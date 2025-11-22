@@ -56,11 +56,34 @@ export type WorkflowNode = Node<any>;
 // ============= API Types =============
 
 export interface AnalyzerInfo {
+  id: number;
   name: string;
   type: 'file' | 'observable';
   description: string;
   supported_filetypes: string[];
-  disabled: boolean;
+  not_supported_filetypes: string[];
+  observable_supported: string[];
+  available: boolean;
+  unavailable_reason?: string;
+}
+
+export interface AnalyzersSummary {
+  available_count: number;
+  unavailable_count: number;
+  total_count: number;
+  containers_detected: {
+    core: boolean;
+    malware_tools: boolean;
+    apk_analyzers: boolean;
+    advanced_analyzers: boolean;
+    observable_analyzers: boolean;
+  };
+}
+
+export interface AnalyzersResponse {
+  available: AnalyzerInfo[];
+  unavailable: AnalyzerInfo[];
+  summary: AnalyzersSummary;
 }
 
 export interface JobStatusResponse {

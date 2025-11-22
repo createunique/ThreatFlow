@@ -72,9 +72,15 @@ GET /health/intelowl           # IntelOwl connectivity check
 
 #### Analyzer Management
 ```bash
-GET /api/analyzers?type=file    # List available analyzers
-# Returns: [{name, type, description, supported_filetypes, disabled}]
+GET /api/analyzers?type=file    # List all analyzers (available + unavailable)
+# Returns: {available, unavailable, summary} with container detection
 ```
+
+**Solution 1 Enhancement:**
+- Returns both available (18) and unavailable (186) analyzers
+- Each analyzer includes `available: true/false` and `unavailable_reason` (if not available)
+- Summary shows which Docker containers are installed/missing
+- Frontend uses this to show visual indicators (✅ green vs 🔒 red)
 
 #### Workflow Execution
 ```bash
@@ -135,13 +141,35 @@ const apiClient = axios.create({
    - Drag "File Upload" node from left sidebar
    - Upload a file by clicking or dragging into the node
    - Drag "Analyzer" node(s) and select analyzers from dropdown
+   - **Solution 1**: Dropdown now shows:
+     - **Green checkmark** (✅): Available analyzers you can select
+     - **Red lock icon** (🔒): Unavailable analyzers (containers not installed)
    - Connect nodes by dragging from output to input handles
-   - Click "Execute" button to run analysis
+   - Click "Execute" button to run analysis (only available analyzers will run)
 
 3. **Monitor Results**:
    - Status panel shows real-time progress
    - Results display when analysis completes
    - View detailed analyzer reports
+
+### Analyzer Selection (Solution 1 Enhancement)
+
+**AnalyzerSelectionModal Component Updates:**
+- **Visual Indicators**: Each analyzer shows availability status
+  - ✅ Green checkmark for available analyzers
+  - 🔒 Red lock for unavailable analyzers (disabled, cannot click)
+  - Strike-through text for unavailable analyzers
+  - Red "Unavailable" badge
+
+- **Information Display**: 
+  - Shows unavailable reason on hover (e.g., "Requires observable analyzers container")
+  - Displays container requirements clearly
+  - Shows total: "18/204 analyzers available"
+
+- **Selection Control**:
+  - Available analyzers can be selected normally
+  - Unavailable analyzers cannot be clicked or selected
+  - Gray/disabled state prevents user confusion
 
 ### Node Types & Usage
 
@@ -150,11 +178,23 @@ const apiClient = axios.create({
 - **Features**: Drag-drop upload, file validation, size display
 - **Data**: `{file, fileName, fileSize}`
 
-#### Analyzer Node
+#### Analyzer Node (Solution 1 Enhanced)
 - **Purpose**: Select IntelOwl analyzers
-- **Features**: Dropdown with available analyzers, live selection
+- **Features**: 
+  - Dropdown shows 204 total analyzers (18 available + 186 unavailable)
+  - Visual indicators show availability status
+  - Badge displays "18/204 analyzers available"
+  - Cannot select unavailable analyzers (disabled UI elements)
 - **Data**: `{analyzer, analyzerType, description}`
 - **Endpoints Used**: `GET /api/analyzers`
+
+**Example Badge:**
+```
+[18/204 analyzers available] 🔒
+
+Available (18):     ✅ File_Info, ClamAV, PE_Info, APKiD, ...
+Unavailable (186):  🔒 AILTypoSquatting, AbuseIPDB, VirusTotal_v3_Get_Observable, ...
+```
 
 #### Result Node
 - **Purpose**: Display analysis results
@@ -233,6 +273,89 @@ curl -I http://localhost:3000
 
 ## Development Notes
 
+## Development Notes
+
+### Solution 1: Analyzer Availability Detection (Frontend Integration)
+
+#### Type Definitions (workflow.ts)
+New types for handling availability information:
+
+```typescript
+export interface AnalyzerInfo {
+  id: number;
+  name: string;
+  type: 'file' | 'observable';
+  description: string;
+  available: boolean;           // NEW: Availability status
+  unavailable_reason?: string;  // NEW: Why it's unavailable
+  supported_filetypes: string[];
+  not_supported_filetypes: string[];
+  observable_supported: string[];
+}
+
+export interface AnalyzersSummary {
+  available_count: number;
+  unavailable_count: number;
+  total_count: number;
+  containers_detected: {
+    core: boolean;
+    malware_tools: boolean;
+    apk_analyzers: boolean;
+    advanced_analyzers: boolean;
+    observable_analyzers: boolean;
+  };
+}
+
+export interface AnalyzersResponse {
+  available: AnalyzerInfo[];
+  unavailable: AnalyzerInfo[];
+  summary: AnalyzersSummary;
+}
+```
+
+#### API Service (api.ts)
+Updated to handle new response structure:
+
+```typescript
+getAnalyzers: async (type?: 'file' | 'observable'): Promise<AnalyzersResponse> => {
+  const response = await apiClient.get<AnalyzersResponse>('/api/analyzers', { params });
+  return response.data;  // Returns {available, unavailable, summary}
+}
+```
+
+#### AnalyzerSelectionModal Component
+Enhanced with visual availability indicators:
+
+```typescript
+// Shows unavailable analyzers with lock icons and disabled state
+{!analyzer.available && (
+  <>
+    <Lock size={18} color="#f44336" />  // Red lock icon
+    <Typography variant="caption" sx={{ color: '#f44336' }}>
+      ℹ️ {analyzer.unavailable_reason}  // Show reason on hover
+    </Typography>
+  </>
+)}
+
+// Disable unavailable analyzers from selection
+<ListItemButton
+  disabled={!analyzer.available}
+  opacity: analyzer.available ? 1 : 0.65
+/>
+```
+
+#### AnalyzerNode Component
+Updated to combine available + unavailable and display ratio:
+
+```typescript
+// Fetch both available and unavailable analyzers
+const response: AnalyzersResponse = await api.getAnalyzers('file');
+cachedAnalyzers = [...response.available, ...response.unavailable];
+
+// Display ratio in badge
+label={`${analyzers.filter(a => a.available).length}/${analyzers.length} analyzers available`}
+```
+
 ### Key Implementation Details
 
 #### React Flow Integration
@@ -252,7 +375,7 @@ curl -I http://localhost:3000
 
 #### Performance Optimizations
 - Memoized components to prevent unnecessary re-renders
-- Singleton analyzer fetching to avoid duplicate API calls
+- **Solution 1**: Singleton analyzer fetching to avoid duplicate API calls
 - Efficient polling with configurable intervals
 
 ### File Structure
@@ -288,7 +411,44 @@ threatflow-frontend/
 
 ---
 
-**Last Updated**: November 22, 2025
-**Version**: Phase 3 Complete - React Frontend
-**Status**: ✅ Fully Functional and Tested</content>
+**Last Updated**: November 23, 2025
+**Version**: Phase 3 Complete - React Frontend with Solution 1 (Container Detection)
+**Status**: ✅ Fully Functional with Analyzer Availability Detection
+
+## Solution 1: Frontend Implementation Summary
+
+### Problem Solved
+Users need to see which analyzers they can actually use based on installed Docker containers, to avoid selecting unavailable analyzers.
+
+### Frontend Components Updated
+
+#### 1. **Type Definitions** (workflow.ts)
+- Added `AnalyzerInfo` with `available` and `unavailable_reason` fields
+- Added `AnalyzersSummary` with container detection results
+- Added `AnalyzersResponse` with separate `available` and `unavailable` arrays
+
+#### 2. **API Service** (api.ts)
+- Updated `getAnalyzers()` to return `AnalyzersResponse` (not just array)
+- Frontend now receives both available and unavailable analyzers
+
+#### 3. **AnalyzerSelectionModal** (AnalyzerSelectionModal.tsx)
+- Displays 204 total analyzers (18 available + 186 unavailable)
+- Visual indicators:
+  - ✅ Green checkmarks for available
+  - 🔒 Red lock icons for unavailable
+- Unavailable analyzers are disabled (cannot be clicked)
+- Shows hover tooltips with unavailable reasons
+- Updated badge to show "18/204 analyzers available"
+
+#### 4. **AnalyzerNode** (AnalyzerNode.tsx)
+- Combines available + unavailable analyzers
+- Displays ratio: "18/204 analyzers available"
+- Uses singleton fetching pattern to prevent duplicate API calls
+
+### Current Status
+- ✅ 18 analyzers available (malware_tools container running)
+- ✅ 186 analyzers unavailable (containers not installed or require API keys)
+- ✅ 204 total enabled analyzers
+- ✅ Visual indicators prevent user confusion
+- ✅ Unavailable reasons help users understand container requirements</content>
 <parameter name="filePath">/home/anonymous/COLLEGE/ThreatFlow/threatflow-frontend/THREATFLOW_DOCS.md

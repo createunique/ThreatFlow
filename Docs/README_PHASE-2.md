@@ -138,30 +138,54 @@ Checks connectivity to IntelOwl backend and reports available analyzers.
 ### Analyzer Management
 
 #### GET `/api/analyzers`
-Retrieves list of available IntelOwl analyzers.
+Retrieves list of available and unavailable IntelOwl analyzers with container detection.
 
 **Query Parameters:**
 - `type` (optional): Filter by analyzer type (`file`, `observable`)
 
-**Response:**
+**Response Structure:**
 ```json
-[
-  {
-    "name": "File_Info",
-    "type": "file",
-    "description": "Basic file information extractor",
-    "supported_filetypes": ["*"],
-    "disabled": false
-  },
-  {
-    "name": "ClamAV",
-    "type": "file",
-    "description": "ClamAV antivirus scanner",
-    "supported_filetypes": ["*"],
-    "disabled": false
+{
+  "available": [
+    {
+      "id": 190,
+      "name": "APK_Artifacts",
+      "type": "file",
+      "description": "APK strings analysis",
+      "supported_filetypes": ["application/zip", "application/vnd.android.package-archive"],
+      "available": true
+    }
+  ],
+  "unavailable": [
+    {
+      "id": 167,
+      "name": "AILTypoSquatting",
+      "type": "observable",
+      "description": "Typo squatting detection",
+      "available": false,
+      "unavailable_reason": "Requires observable analyzers container (--observable_analyzers)"
+    }
+  ],
+  "summary": {
+    "available_count": 18,
+    "unavailable_count": 186,
+    "total_count": 204,
+    "containers_detected": {
+      "core": true,
+      "malware_tools": true,
+      "apk_analyzers": false,
+      "advanced_analyzers": false,
+      "observable_analyzers": false
+    }
   }
-]
+}
 ```
+
+**Key Improvements (Solution 1):**
+- **Analyzer Availability Detection**: Checks running Docker containers to determine which analyzers are available
+- **Container Mapping**: Identifies which analyzers require which containers
+- **Unavailable Reasons**: Provides specific reasons why analyzers are unavailable (missing containers or API configuration)
+- **Frontend Integration**: Separates available/unavailable to display visual indicators (✅ green vs 🔒 red)
 
 ### Workflow Execution
 
@@ -487,11 +511,15 @@ The React frontend consumes the middleware API for all user interactions:
 
 **How Frontend Uses Middleware:**
 
-1. **Analyzer Discovery:**
+1. **Analyzer Discovery (Solution 1):**
    ```javascript
-   // Fetch available analyzers for workflow builder
+   // Fetch available AND unavailable analyzers for workflow builder
    GET /api/analyzers?type=file
+   // Returns: {available, unavailable, summary} with container detection
    ```
+   - Frontend displays available analyzers with green checkmarks (✅)
+   - Unavailable analyzers shown with lock icons (🔒) and reasons
+   - Users cannot select unavailable analyzers
 
 2. **Workflow Execution:**
    ```javascript
@@ -508,15 +536,22 @@ The React frontend consumes the middleware API for all user interactions:
 
 4. **Health Monitoring:**
    ```javascript
-   // Check system connectivity
+   // Check system connectivity and container status
    GET /health/intelowl
    ```
 
 **Integration Pattern:**
 - Frontend builds visual workflows using React Flow
+- Displays analyzer availability based on container detection
 - Converts canvas to JSON and sends to middleware
 - Displays real-time progress via status polling
 - Shows detailed results when analysis completes
+
+**Solution 1 Enhancement:**
+- Analyzer selection modal now shows 204 total analyzers (18 available + 186 unavailable)
+- Visual separation prevents users from selecting unavailable analyzers
+- Container status visible in summary (which containers running/not running)
+- Unavailable reasons help users understand why analyzers aren't available
 
 ## Contributing
 
@@ -528,7 +563,55 @@ The React frontend consumes the middleware API for all user interactions:
 
 ---
 
-**Last Updated:** November 22, 2025
-**Version:** Phase 2 - FastAPI Middleware Complete
-**Status:** ✅ Fully Functional and Tested</content>
+**Last Updated:** November 23, 2025
+**Version:** Phase 2 - FastAPI Middleware with Solution 1 (Container Detection)
+**Status:** ✅ Fully Functional with Analyzer Availability Detection
+
+## Solution 1: Analyzer Availability Detection (Backend Enhancement)
+
+### Problem Solved
+IntelOwl backend doesn't directly expose which analyzers are available. All analyzers are registered in the database, but many require specific Docker containers that may not be installed.
+
+### Solution Implementation
+Detect running Docker containers and determine analyzer availability based on container presence.
+
+### Backend Changes
+**File:** `app/services/intelowl_service.py`
+
+1. **Container Detection Method:**
+   ```python
+   def _detect_installed_containers(self) -> Dict[str, bool]:
+       # Runs: docker ps --format {{.Names}}
+       # Returns: {'core': true, 'malware_tools': true, 'apk_analyzers': false, ...}
+   ```
+
+2. **Analyzer Categorization Constants:**
+   - `MALWARE_TOOLS_ANALYZERS`: 18 analyzers (ClamAV, APKiD, etc.)
+   - `APK_ANALYZERS`: Android analysis tools (Androguard, MobSF, etc.)
+   - `ADVANCED_ANALYZERS`: Binary tools (SpeakEasy, ELF_Info, Suricata, etc.)
+   - `OBSERVABLE_ANALYZERS`: Network tools (DNS, IP reputation, domain tools, etc.)
+
+3. **Availability Check Method:**
+   ```python
+   def _is_analyzer_available(analyzer_name, containers) -> bool:
+       # Maps analyzer to required container
+       # Returns True if container is installed
+   ```
+
+4. **Response Structure:**
+   ```python
+   def get_available_analyzers() -> Dict[str, Any]:
+       # Returns:
+       # {
+       #   "available": [18 analyzers],
+       #   "unavailable": [186 analyzers],
+       #   "summary": {counts, container_status}
+       # }
+   ```
+
+### Current Environment Results
+- **18 Available Analyzers** (malware_tools container running)
+- **186 Unavailable Analyzers** (containers not installed)
+- **204 Total** (enabled analyzers)
+- **1 Disabled** (Securitytrails)</content>
 <parameter name="filePath">/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/README.md

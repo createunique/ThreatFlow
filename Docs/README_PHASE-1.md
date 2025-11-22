@@ -288,20 +288,59 @@ Tests IntelOwl connectivity and reports analyzer count.
 ### Core Endpoints
 
 #### GET `/api/analyzers`
-Returns available IntelOwl analyzers.
+Returns available and unavailable IntelOwl analyzers with container detection.
+
+**Container Detection:** Analyzes running Docker containers to determine analyzer availability.
+
+**Response Structure:**
 ```json
-[
-  {
-    "name": "File_Info",
-    "type": "file",
-    "description": "Basic file information extractor",
-    "supported_filetypes": ["*"],
-    "disabled": false
+{
+  "available": [
+    {
+      "id": 190,
+      "name": "APK_Artifacts",
+      "type": "file",
+      "description": "APK strings analysis",
+      "supported_filetypes": ["application/zip", "application/vnd.android.package-archive"],
+      "available": true
+    }
+  ],
+  "unavailable": [
+    {
+      "id": 167,
+      "name": "AILTypoSquatting",
+      "type": "observable",
+      "description": "Typo squatting detection",
+      "available": false,
+      "unavailable_reason": "Requires observable analyzers container (--observable_analyzers)"
+    }
+  ],
+  "summary": {
+    "available_count": 18,
+    "unavailable_count": 186,
+    "total_count": 204,
+    "containers_detected": {
+      "core": true,
+      "malware_tools": true,
+      "apk_analyzers": false,
+      "advanced_analyzers": false,
+      "observable_analyzers": false
+    }
   }
-]
+}
 ```
 
-#### POST `/api/execute`
+**Container Requirements:**
+- `core`: Core analysis tools (always required)
+- `malware_tools`: File analysis (ClamAV, APKiD, BoxJS, Capa, Doc_Info, etc.)
+- `apk_analyzers`: Android APK analysis (Androguard, MobSF, Droidlysis, etc.)
+- `advanced_analyzers`: Advanced tools (SpeakEasy, ELF_Info, Suricata, etc.)
+- `observable_analyzers`: Network analysis (DNS, IP reputation, domain tools, etc.)
+
+**Query Parameters:**
+- `type` (optional): Filter by `file` or `observable`
+
+#### GET `/api/analyzers`
 Executes workflow-based analysis.
 **Content-Type:** `multipart/form-data`
 **Form Fields:**
@@ -583,7 +622,31 @@ For issues specific to this ThreatFlow integration, check the middleware logs an
 
 ---
 
-**Last Updated:** November 22, 2025
-**Version:** Phase 1 - IntelOwl Backend Integration
-**Status:** ✅ Fully Functional and Tested</content>
+**Last Updated:** November 23, 2025
+**Version:** Phase 1 - IntelOwl Backend Integration + Solution 1 (Container Detection)
+**Status:** ✅ Fully Functional with Analyzer Availability Detection
+
+## Solution 1: Analyzer Availability Detection
+
+### Implementation Summary
+Detects which IntelOwl analyzers are installed by checking running Docker containers and categorizing analyzers by their required container.
+
+### Key Features
+- **Container Detection**: Uses `docker ps` to find running containers
+- **Analyzer Categorization**: Maps 204 enabled analyzers to 5 container types
+- **Availability Status**: Returns `available: true/false` for each analyzer
+- **Reason Codes**: Provides human-readable reasons for unavailable analyzers
+- **Summary Statistics**: Total counts and container detection results
+
+### How It Works
+1. Backend detects which Docker containers are running
+2. Matches analyzers to their required containers
+3. Returns both available and unavailable analyzers in separate arrays
+4. Frontend displays visual indicators (✅ green for available, 🔒 red for unavailable)
+5. Users cannot select unavailable analyzers in the UI
+
+### Example: Current Environment
+- **Available**: 18 analyzers (malware_tools container running)
+- **Unavailable**: 186 analyzers (require apk_analyzers, advanced_analyzers, observable_analyzers, or standard API)
+- **Total**: 204 enabled analyzers</content>
 <parameter name="filePath">/home/anonymous/COLLEGE/ThreatFlow/phase1/README.md
