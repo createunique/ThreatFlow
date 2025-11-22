@@ -1,6 +1,6 @@
 /**
- * Properties Panel
- * Shows properties of selected node with live updates
+ * Inspector Panel
+ * Unified panel showing properties for non-result nodes and detailed results for result nodes
  */
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { Box, Paper, Typography, Divider, Chip } from '@mui/material';
 import { Info, Upload, Shield, FileText } from 'lucide-react';
 import { useWorkflowState } from '../../hooks/useWorkflowState';
 
-const PropertiesPanel: React.FC = () => {
+const InspectorPanel: React.FC = () => {
   const selectedNode = useWorkflowState((state) => state.selectedNode);
 
   const getNodeIcon = (type?: string) => {
@@ -50,14 +50,14 @@ const PropertiesPanel: React.FC = () => {
         >
           <Info size={48} strokeWidth={1.5} />
           <Typography variant="body2" mt={2} textAlign="center">
-            Select a node to view its properties
+            Select a node to inspect its properties
           </Typography>
         </Box>
       );
     }
 
     const { type, data, id } = selectedNode;
-
+    // Default properties view for other node types
     return (
       <Box>
         {/* Node Header */}
@@ -67,9 +67,9 @@ const PropertiesPanel: React.FC = () => {
             <Typography variant="h6" fontWeight="bold">
               {data.label || type}
             </Typography>
-            <Chip 
-              label={type?.toUpperCase()} 
-              size="small" 
+            <Chip
+              label={type?.toUpperCase()}
+              size="small"
               color={getNodeTypeColor(type) as any}
               sx={{ mt: 0.5 }}
             />
@@ -83,10 +83,10 @@ const PropertiesPanel: React.FC = () => {
           <Typography variant="caption" color="text.secondary" fontWeight="bold">
             Node ID
           </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontFamily: 'monospace', 
+          <Typography
+            variant="body2"
+            sx={{
+              fontFamily: 'monospace',
               fontSize: '0.85rem',
               backgroundColor: '#f5f5f5',
               padding: 0.5,
@@ -138,9 +138,9 @@ const PropertiesPanel: React.FC = () => {
                   <Typography variant="caption" color="text.secondary" fontWeight="bold">
                     Analyzer Type
                   </Typography>
-                  <Chip 
-                    label={(data as any).analyzerType?.toUpperCase()} 
-                    size="small" 
+                  <Chip
+                    label={(data as any).analyzerType?.toUpperCase()}
+                    size="small"
                     variant="outlined"
                     sx={{ mt: 0.5 }}
                   />
@@ -154,32 +154,6 @@ const PropertiesPanel: React.FC = () => {
                   </Typography>
                 </Box>
               </>
-            )}
-          </>
-        )}
-
-        {type === 'result' && (
-          <>
-            <Box mb={2}>
-              <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                Status
-              </Typography>
-              <Chip 
-                label={(data as any).status?.toUpperCase() || 'IDLE'} 
-                size="small" 
-                color={(data as any).status === 'completed' ? 'success' : 'default'}
-                sx={{ mt: 0.5 }}
-              />
-            </Box>
-            {(data as any).jobId && (
-              <Box mb={2}>
-                <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                  Job ID
-                </Typography>
-                <Typography variant="body2" mt={0.5} fontFamily="monospace">
-                  {(data as any).jobId}
-                </Typography>
-              </Box>
             )}
           </>
         )}
@@ -204,8 +178,8 @@ const PropertiesPanel: React.FC = () => {
             <Typography
               variant="caption"
               component="pre"
-              sx={{ 
-                whiteSpace: 'pre-wrap', 
+              sx={{
+                whiteSpace: 'pre-wrap',
                 fontFamily: 'monospace',
                 fontSize: '0.75rem',
                 margin: 0,
@@ -242,4 +216,4 @@ const PropertiesPanel: React.FC = () => {
   );
 };
 
-export default PropertiesPanel;
+export default InspectorPanel;
