@@ -127,6 +127,8 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
         backgroundColor: '#fff',
         position: 'relative',
       }}
+      role="region"
+      aria-label={`Analyzer node ${selected ? '(selected)' : ''}${data.analyzer ? ` - ${data.analyzer} selected` : ' - no analyzer selected'}`}
     >
       {/* Handles */}
       <Handle
@@ -162,16 +164,21 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
 
       {/* Analyzer Selection */}
       {loading ? (
-        <Box display="flex" justifyContent="center" py={2}>
-          <CircularProgress size={24} />
+        <Box display="flex" justifyContent="center" py={2} role="status" aria-label="Loading analyzers">
+          <CircularProgress size={24} aria-hidden="true" />
         </Box>
       ) : error ? (
-        <Box display="flex" alignItems="center" gap={1} color="error.main">
-          <AlertCircle size={16} />
+        <Box display="flex" alignItems="center" gap={1} color="error.main" role="alert" aria-live="assertive">
+          <AlertCircle size={16} aria-hidden="true" />
           <Typography variant="caption">{error}</Typography>
         </Box>
       ) : (
-        <FormControl fullWidth size="small">
+        <FormControl 
+          fullWidth 
+          size="small"
+          role="group"
+          aria-label="Analyzer selection"
+        >
           <Select
             value={data.analyzer || ''}
             onChange={handleAnalyzerChange}
@@ -190,12 +197,18 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
                 },
               },
             }}
+            aria-label={`Select analyzer for analysis. Currently ${data.analyzer || 'none'} selected.`}
+            aria-describedby={data.analyzer ? "selected-analyzer-info" : undefined}
           >
-            <MenuItem value="" disabled>
+            <MenuItem value="" disabled aria-label="Please select an analyzer">
               <em>Select Analyzer...</em>
             </MenuItem>
             {analyzers.map((analyzer) => (
-              <MenuItem key={analyzer.name} value={analyzer.name}>
+              <MenuItem 
+                key={analyzer.name} 
+                value={analyzer.name}
+                aria-label={`${analyzer.name}: ${analyzer.description}`}
+              >
                 <Box>
                   <Typography variant="body2">{analyzer.name}</Typography>
                   <Typography variant="caption" color="text.secondary" noWrap>
@@ -211,7 +224,14 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
 
       {/* Selected Analyzer Info */}
       {data.analyzer && (
-        <Box mt={2} p={1.5} sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+        <Box 
+          mt={2} 
+          p={1.5} 
+          sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}
+          id="selected-analyzer-info"
+          role="region"
+          aria-label={`Selected analyzer information: ${data.analyzer}`}
+        >
           <Typography variant="caption" fontWeight="bold" display="block" mb={0.5}>
             {data.analyzer}
           </Typography>

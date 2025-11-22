@@ -28,6 +28,22 @@ const ExecuteButton: React.FC = () => {
 
   const canExecute = uploadedFile && nodes.length > 0 && executionStatus === 'idle';
 
+  const getButtonLabel = () => {
+    if (loading) return 'Executing workflow...';
+    if (executionStatus === 'completed') return 'Workflow completed';
+    if (executionStatus === 'error') return 'Execution failed - try again';
+    return 'Execute workflow';
+  };
+
+  const getButtonAriaLabel = () => {
+    if (!uploadedFile) return 'Cannot execute: No file uploaded. Please upload a file first.';
+    if (nodes.length === 0) return 'Cannot execute: No workflow nodes added. Please add analyzer nodes to the workflow.';
+    if (loading) return `Executing workflow. ${executionStatus === 'running' ? 'Analysis in progress.' : 'Please wait.'}`;
+    if (executionStatus === 'completed') return 'Workflow execution completed successfully. Results are available.';
+    if (executionStatus === 'error') return 'Workflow execution failed. Click to try again.';
+    return 'Execute workflow analysis. This will upload the file and run all configured analyzers.';
+  };
+
   return (
     <Box display="flex" gap={2} alignItems="center">
       {/* Execute Button */}
@@ -49,8 +65,11 @@ const ExecuteButton: React.FC = () => {
             onClick={handleExecute}
             disabled={!canExecute || loading}
             sx={{ minWidth: 150 }}
+            aria-label={getButtonAriaLabel()}
+            aria-describedby={error ? "execution-error" : undefined}
+            role="button"
           >
-            {loading ? 'Running...' : executionStatus === 'completed' ? 'Completed' : 'Execute'}
+            {getButtonLabel()}
           </Button>
         </span>
       </Tooltip>
@@ -65,6 +84,8 @@ const ExecuteButton: React.FC = () => {
             startIcon={<RotateCcw size={20} />}
             onClick={handleReset}
             disabled={loading}
+            aria-label="Reset workflow execution. This will clear all results and allow you to run the analysis again."
+            role="button"
           >
             Reset
           </Button>
@@ -73,7 +94,13 @@ const ExecuteButton: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <Box color="error.main" ml={2}>
+        <Box 
+          color="error.main" 
+          ml={2}
+          role="alert"
+          aria-live="assertive"
+          id="execution-error"
+        >
           <Typography variant="caption">{error}</Typography>
         </Box>
       )}

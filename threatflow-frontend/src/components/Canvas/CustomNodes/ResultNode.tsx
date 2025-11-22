@@ -216,6 +216,8 @@ const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) =>
         borderRadius: 2,
         backgroundColor: '#fff',
       }}
+      role="region"
+      aria-label={`Results node ${selected ? '(selected)' : ''} - Status: ${data.status || 'Idle'}${data.jobId ? ` - Job ID: ${data.jobId}` : ''}`}
     >
       {/* Handle (input) */}
       <Handle
@@ -250,6 +252,8 @@ const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) =>
         color={getStatusColor() as any}
         size="small"
         sx={{ mb: 2 }}
+        role="status"
+        aria-label={`Analysis status: ${data.status || 'Idle'}`}
       />
 
       {/* Results */}
@@ -262,6 +266,9 @@ const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) =>
             maxHeight: 300,
             overflow: 'auto',
           }}
+          role="region"
+          aria-label="Analysis results"
+          tabIndex={0}
         >
           {renderAnalysisResults(data.results)}
         </Box>
@@ -269,8 +276,16 @@ const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) =>
 
       {/* Error */}
       {data.error && (
-        <Box display="flex" alignItems="center" gap={1} color="error.main" mt={1}>
-          <XCircle size={16} />
+        <Box 
+          display="flex" 
+          alignItems="center" 
+          gap={1} 
+          color="error.main" 
+          mt={1}
+          role="alert"
+          aria-live="assertive"
+        >
+          <XCircle size={16} aria-hidden="true" />
           <Typography variant="caption">{data.error}</Typography>
         </Box>
       )}

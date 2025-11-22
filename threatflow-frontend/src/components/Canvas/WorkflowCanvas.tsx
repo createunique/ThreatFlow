@@ -141,6 +141,41 @@ const WorkflowCanvas: React.FC = () => {
     setSelectedNode(null);
   }, [setSelectedNode]);
 
+  // Keyboard shortcuts and accessibility
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Ignore if typing in an input
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'Delete':
+      case 'Backspace':
+        // Delete selected nodes (already handled by ReactFlow)
+        break;
+      case 'Escape':
+        // Deselect all
+        setSelectedNode(null);
+        break;
+      case 'a':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Could implement select all functionality here
+        }
+        break;
+      default:
+        break;
+    }
+  }, [setSelectedNode]);
+
+  // Add keyboard event listeners
+  React.useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
   // Minimap style
   const minimapStyle = useMemo(
     () => ({
@@ -242,6 +277,8 @@ const WorkflowCanvas: React.FC = () => {
           attributionPosition="bottom-left"
           deleteKeyCode="Backspace"
           multiSelectionKeyCode="Shift"
+          aria-label="Workflow canvas. Use mouse to drag nodes and create connections. Press Escape to deselect. Press Delete to remove selected items."
+          role="application"
         >
           <Background 
             variant={BackgroundVariant.Dots} 
@@ -277,9 +314,19 @@ const WorkflowCanvas: React.FC = () => {
                 borderRadius: 2,
                 boxShadow: 2,
               }}
+              role="banner"
+              aria-label="Workflow canvas header"
             >
               <Typography variant="h6" fontWeight="bold" color="primary">
                 🔐 ThreatFlow Workflow Canvas
+              </Typography>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ display: 'block', mt: 0.5 }}
+                aria-label="Keyboard shortcuts: Escape to deselect, Delete to remove selected items"
+              >
+                Press Escape to deselect • Delete to remove items
               </Typography>
             </Box>
           </Panel>

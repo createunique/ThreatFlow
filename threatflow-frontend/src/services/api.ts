@@ -179,18 +179,49 @@ export const api = {
    * @param jobId - Job identifier
    * @param onUpdate - Callback for status updates
    * @param maxAttempts - Maximum polling attempts
+   * @param signal - AbortSignal to cancel polling
    */
   pollJobStatus: async (
     jobId: number,
     onUpdate?: (status: JobStatusResponse) => void,
-    maxAttempts: number = 60
+    maxAttempts: number = 60,
+    signal?: AbortSignal
   ): Promise<JobStatusResponse> => {
     const pollInterval = parseInt(process.env.REACT_APP_POLL_INTERVAL || '5000');
     let attempts = 0;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     return new Promise((resolve, reject) => {
+      // Check if already aborted
+      if (signal?.aborted) {
+        reject(new Error('Polling aborted'));
+        return;
+      }
+
+      // Handle abort signal
+      const abortHandler = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        reject(new Error('Polling aborted'));
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', abortHandler);
+      }
+
       const poll = async () => {
         try {
+          // Check if aborted before each poll
+          if (signal?.aborted) {
+            if (signal) {
+              signal.removeEventListener('abort', abortHandler);
+            }
+            reject(new Error('Polling aborted'));
+            return;
+          }
+
           attempts++;
           const status = await api.getJobStatus(jobId);
 
@@ -201,23 +232,33 @@ export const api = {
 
           // Check if complete
           if (status.results) {
+            if (signal) {
+              signal.removeEventListener('abort', abortHandler);
+            }
             resolve(status);
             return;
           }
 
           // Check if timeout
           if (attempts >= maxAttempts) {
+            if (signal) {
+              signal.removeEventListener('abort', abortHandler);
+            }
             reject(new Error('Job polling timeout'));
             return;
           }
 
           // Continue polling
-          setTimeout(poll, pollInterval);
+          timeoutId = setTimeout(poll, pollInterval);
         } catch (error) {
+          if (signal) {
+            signal.removeEventListener('abort', abortHandler);
+          }
           reject(error);
         }
       };
 
+      // Start polling
       poll();
     });
   },
