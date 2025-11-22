@@ -6,7 +6,90 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '../services/api';
 import { useWorkflowState } from './useWorkflowState';
-import { JobStatusResponse } from '../types/workflow';
+import { JobStatusResponse, CustomNode, Edge } from '../types/workflow';
+
+/**
+ * Distribute analysis results to the appropriate result nodes based on workflow connections
+ */
+const distributeResultsToResultNodes = (
+  allResults: any,
+  nodes: CustomNode[],
+  edges: Edge[],
+  updateNode: (id: string, data: any) => void
+) => {
+  if (!allResults || !allResults.analyzer_reports) {
+    console.warn('No results to distribute');
+    return;
+  }
+
+  // Find all result nodes
+  const resultNodes = nodes.filter(node => node.type === 'result');
+  
+  if (resultNodes.length === 0) {
+    console.warn('No result nodes found in workflow');
+    return;
+  }
+
+  // For each result node, find the analyzers that feed into it
+  resultNodes.forEach(resultNode => {
+    const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+    
+    // Filter results to only include reports from connected analyzers
+    const filteredResults = {
+      ...allResults,
+      analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
+        connectedAnalyzers.includes(report.name)
+      )
+    };
+
+    // Update the result node with filtered results
+    updateNode(resultNode.id, {
+      jobId: allResults.job_id || null,
+      status: allResults.status || 'reported_without_fails',
+      results: filteredResults,
+      error: null,
+    });
+
+    console.log(`Updated result node ${resultNode.id} with ${filteredResults.analyzer_reports.length} analyzer reports:`, 
+      filteredResults.analyzer_reports.map((r: any) => r.name));
+  });
+};
+
+/**
+ * Find all analyzers that are connected to a result node by tracing back through edges
+ */
+const findConnectedAnalyzers = (resultNodeId: string, nodes: CustomNode[], edges: Edge[]): string[] => {
+  const connectedAnalyzers: string[] = [];
+  const visited = new Set<string>();
+  
+  const traceBackwards = (currentNodeId: string) => {
+    if (visited.has(currentNodeId)) return;
+    visited.add(currentNodeId);
+    
+    // Find all edges that point TO this node (incoming edges)
+    const incomingEdges = edges.filter(edge => edge.target === currentNodeId);
+    
+    incomingEdges.forEach(edge => {
+      const sourceNode = nodes.find(node => node.id === edge.source);
+      
+      if (sourceNode) {
+        if (sourceNode.type === 'analyzer') {
+          // Found an analyzer connected to this result node
+          const analyzerData = sourceNode.data as { analyzer: string };
+          connectedAnalyzers.push(analyzerData.analyzer);
+        } else if (sourceNode.type !== 'result') {
+          // Continue tracing back through other node types (like file nodes)
+          traceBackwards(sourceNode.id);
+        }
+      }
+    });
+  };
+  
+  // Start tracing from the result node
+  traceBackwards(resultNodeId);
+  
+  return connectedAnalyzers;
+};
 
 export const useWorkflowExecution = () => {
   const [loading, setLoading] = useState(false);
@@ -133,16 +216,8 @@ export const useWorkflowExecution = () => {
       console.log('Workflow completed:', finalStatus);
       setExecutionStatus('completed');
       
-      // Update ResultNode with results
-      const resultNode = nodes.find(n => n.type === 'result');
-      if (resultNode) {
-        updateNode(resultNode.id, {
-          jobId: finalStatus.job_id,
-          status: finalStatus.status,
-          results: finalStatus.results || null,
-          error: null,
-        });
-      }
+      // Distribute results to appropriate result nodes based on workflow connections
+      distributeResultsToResultNodes(finalStatus.results, nodes, edges, updateNode);
       
       return finalStatus;
     } catch (err: any) {
@@ -156,16 +231,16 @@ export const useWorkflowExecution = () => {
       safeSetError(err.message || 'Execution failed');
       setExecutionStatus('error');
       
-      // Update ResultNode with error
-      const resultNode = nodes.find(n => n.type === 'result');
-      if (resultNode) {
+      // Update all result nodes with error status
+      const resultNodes = nodes.filter(n => n.type === 'result');
+      resultNodes.forEach(resultNode => {
         updateNode(resultNode.id, {
           jobId: null,
           status: 'failed',
           results: null,
           error: err.message || 'Execution failed',
         });
-      }
+      });
       
       return null;
     } finally {
