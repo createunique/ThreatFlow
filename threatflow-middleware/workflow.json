@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "id": "file-1",
+      "type": "file",
+      "data": {"filename": "test_file.txt"},
+      "position": {"x": 100, "y": 100}
+    },
+    {
+      "id": "analyzer-1", 
+      "type": "analyzer",
+      "data": {"analyzer": "File_Info"},
+      "position": {"x": 300, "y": 50}
+    },
+    {
+      "id": "analyzer-2",
+      "type": "analyzer", 
+      "data": {"analyzer": "ClamAV"},
+      "position": {"x": 300, "y": 150}
+    },
+    {
+      "id": "analyzer-3",
+      "type": "analyzer",
+      "data": {"analyzer": "VirusTotal_v3_Get_File"},
+      "position": {"x": 300, "y": 250}
+    }
+  ],
+  "edges": [
+    {"id": "edge-1", "source": "file-1", "target": "analyzer-1"},
+    {"id": "edge-2", "source": "file-1", "target": "analyzer-2"}, 
+    {"id": "edge-3", "source": "file-1", "target": "analyzer-3"}
+  ]
+}

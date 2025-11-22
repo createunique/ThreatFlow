@@ -1,0 +1,21 @@
+{
+  "nodes": [
+    {
+      "id": "file-1",
+      "type": "file",
+      "data": {"filename": "test_file.txt"}
+    },
+    {
+      "id": "analyzer-1",
+      "type": "analyzer",
+      "data": {"analyzer": "File_Info"}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "file-1",
+      "target": "analyzer-1"
+    }
+  ]
+}
