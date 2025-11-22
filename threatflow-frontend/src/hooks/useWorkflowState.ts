@@ -11,6 +11,7 @@ import {
   WorkflowState,
   CustomNode,
   CustomNodeData,
+  ResultNode,
 } from '../types/workflow';
 
 // Initial state
@@ -81,7 +82,19 @@ export const useWorkflowState = create<WorkflowStore>()(
 
       // ============= Reset =============
 
-      reset: () => set(initialState),
+      reset: () => set((state) => ({
+        ...initialState,
+        // Clear node data but keep the nodes structure
+        nodes: state.nodes.map(node => {
+          if (node.type === 'result') {
+            return {
+              ...node,
+              data: { label: 'Results', jobId: null, status: 'idle', results: null, error: null }
+            } as ResultNode;
+          }
+          return node;
+        })
+      })),
     }),
     { name: 'ThreatFlow-Workflow' }
   )

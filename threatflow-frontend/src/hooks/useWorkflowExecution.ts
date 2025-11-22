@@ -18,6 +18,7 @@ export const useWorkflowExecution = () => {
   const uploadedFile = useWorkflowState((state) => state.uploadedFile);
   const setJobId = useWorkflowState((state) => state.setJobId);
   const setExecutionStatus = useWorkflowState((state) => state.setExecutionStatus);
+  const updateNode = useWorkflowState((state) => state.updateNode);
 
   /**
    * Execute workflow
@@ -70,16 +71,40 @@ export const useWorkflowExecution = () => {
 
       console.log('Workflow completed:', finalStatus);
       setExecutionStatus('completed');
+      
+      // Update ResultNode with results
+      const resultNode = nodes.find(n => n.type === 'result');
+      if (resultNode) {
+        updateNode(resultNode.id, {
+          jobId: finalStatus.job_id,
+          status: finalStatus.status,
+          results: finalStatus.results || null,
+          error: null,
+        });
+      }
+      
       return finalStatus;
     } catch (err: any) {
       console.error('Workflow execution failed:', err);
       setError(err.message || 'Execution failed');
       setExecutionStatus('error');
+      
+      // Update ResultNode with error
+      const resultNode = nodes.find(n => n.type === 'result');
+      if (resultNode) {
+        updateNode(resultNode.id, {
+          jobId: null,
+          status: 'failed',
+          results: null,
+          error: err.message || 'Execution failed',
+        });
+      }
+      
       return null;
     } finally {
       setLoading(false);
     }
-  }, [nodes, edges, uploadedFile, setJobId, setExecutionStatus]);
+  }, [nodes, edges, uploadedFile, setJobId, setExecutionStatus, updateNode]);
 
   /**
    * Reset execution state
