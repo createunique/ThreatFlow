@@ -117,26 +117,82 @@ class IntelOwlService:
         
         raise TimeoutError(f"Job {job_id} did not complete within {timeout}s")
     
-    async def get_available_analyzers(self, analyzer_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get list of available analyzers from IntelOwl"""
+    def _fetch_all_analyzers_paginated(self) -> List[Dict[str, Any]]:
+        """Fetch all analyzers from IntelOwl with pagination (synchronous helper for executor)"""
+        all_analyzers = []
+        url = f"{settings.INTELOWL_URL}/api/analyzer"
+        
         try:
-            import httpx
+            # Use pyintelowl client's session directly for pagination
+            page_offset = 0
+            page_size = 10  # IntelOwl default page size
             
-            headers = {"Authorization": f"Token {settings.INTELOWL_API_KEY}"}
-            url = f"{settings.INTELOWL_URL}/api/get_analyzer_configs"
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
+            while True:
+                # Use the client's session (requests.Session) to make requests
+                # This will include proper authentication
+                params = {"offset": page_offset}
+                
+                logger.debug(f"[DEBUG] Fetching analyzers page at offset {page_offset}")
+                response = self.client.session.get(
+                    url,
+                    params=params,
+                    headers={"Authorization": f"Token {settings.INTELOWL_API_KEY}"}
+                )
                 response.raise_for_status()
-                all_analyzers = response.json()
+                response_data = response.json()
+                
+                # Extract results from paginated response
+                if isinstance(response_data, dict):
+                    results = response_data.get("results", [])
+                    all_analyzers.extend(results)
+                    
+                    total_count = response_data.get("count", 0)
+                    logger.debug(f"[DEBUG] Page offset {page_offset}: got {len(results)} results, total available: {total_count}")
+                    
+                    # Check if we've fetched all results
+                    if len(all_analyzers) >= total_count or not results:
+                        logger.debug(f"[DEBUG] Completed fetching all {len(all_analyzers)} analyzers")
+                        break
+                    
+                    page_offset += page_size
+                else:
+                    # Fallback if response is a list instead of dict
+                    all_analyzers = response_data
+                    break
+                    
+        except Exception as e:
+            logger.error(f"[ERROR] Error fetching analyzers via pagination: {type(e).__name__}: {e}")
+            raise
+        
+        return all_analyzers
+    
+    async def get_available_analyzers(self, analyzer_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get list of available analyzers from IntelOwl using pyintelowl client"""
+        try:
+            # Use pyintelowl client's internal session to fetch all analyzers with pagination
+            # The endpoint is /api/analyzer and returns paginated results with "count" and "results" keys
+            
+            logger.info(f"[INFO] Fetching analyzers from IntelOwl using pyintelowl client")
+            
+            # Run the synchronous request in a thread pool since pyintelowl uses requests (sync)
+            loop = asyncio.get_event_loop()
+            all_analyzers = await loop.run_in_executor(
+                None, 
+                self._fetch_all_analyzers_paginated
+            )
+            
+            logger.info(f"[INFO] Successfully fetched {len(all_analyzers)} analyzers from IntelOwl API")
             
             if analyzer_type:
+                before_filter = len(all_analyzers)
                 all_analyzers = [
                     a for a in all_analyzers
                     if a.get("type") == analyzer_type
                 ]
+                logger.info(f"[INFO] Filtered {before_filter} analyzers by type '{analyzer_type}': {len(all_analyzers)} remaining")
             
-            return [
+            # Only return enabled analyzers
+            enabled_analyzers = [
                 {
                     "name": a["name"],
                     "type": a.get("type", "unknown"),
@@ -148,8 +204,13 @@ class IntelOwlService:
                 if not a.get("disabled", False)
             ]
             
+            logger.info(f"[INFO] Returning {len(enabled_analyzers)} enabled analyzers")
+            logger.debug(f"[DEBUG] Analyzer names: {[a['name'] for a in enabled_analyzers][:10]}...")  # Log first 10
+            return enabled_analyzers
+            
         except Exception as e:
-            logger.warning(f"Failed to fetch analyzers from API: {e}. Using mock analyzers for testing.")
+            logger.error(f"[ERROR] Failed to fetch analyzers from API: {type(e).__name__}: {e}")
+            logger.warning(f"[WARNING] Falling back to MOCK analyzers (production should have real analyzers)")
             # Return mock analyzers for testing when API is not available
             mock_analyzers = [
                 {
