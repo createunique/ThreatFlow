@@ -5,15 +5,17 @@
 
 import React, { FC, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { CheckCircle2, XCircle, Loader2, AlertTriangle, Eye } from 'lucide-react';
-import { Box, Typography, Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import { CheckCircle2, XCircle, Loader2, AlertTriangle, Eye, X } from 'lucide-react';
+import { Box, Typography, Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Tooltip } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import ErrorBoundary from '../../ErrorBoundary';
 import { ResultTabs } from './ResultTabs';
 import { ResultNodeData } from '../../../types/workflow';
+import { useWorkflowState } from '../../../hooks/useWorkflowState';
 
-const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) => {
+const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected, id }) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const deleteNode = useWorkflowState((state) => state.deleteNode);
 
   const handleOpenModal = () => setModalOpen(true);
   const handleCloseModal = () => setModalOpen(false);
@@ -86,15 +88,35 @@ const ResultNodeContent: FC<NodeProps<ResultNodeData>> = ({ data, selected }) =>
           }}
         />
 
-        {/* Header */}
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
-          {getStatusIcon()}
-          <Typography variant="subtitle1" fontWeight="bold">
-            Results
-          </Typography>
-        </Box>
-
-        {/* Job ID */}
+      {/* Header */}
+      <Box display="flex" alignItems="center" gap={1} mb={2}>
+        {getStatusIcon()}
+        <Typography variant="subtitle1" fontWeight="bold">
+          Results
+        </Typography>
+        <Box sx={{ flexGrow: 1 }} />
+        <Tooltip title="Delete node (Del)" placement="top">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNode(id);
+            }}
+            sx={{
+              color: '#666',
+              '&:hover': {
+                color: '#f44336',
+                backgroundColor: '#ffebee',
+              },
+              width: 24,
+              height: 24,
+            }}
+            aria-label="Delete result node"
+          >
+            <X size={14} />
+          </IconButton>
+        </Tooltip>
+      </Box>        {/* Job ID */}
         {data.jobId && (
           <Typography variant="caption" color="text.secondary" mb={1} display="block">
             Job ID: {data.jobId}

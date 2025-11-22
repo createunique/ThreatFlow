@@ -7,7 +7,7 @@ import React, { FC, useCallback, useState, useRef } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Box, Typography, Paper, IconButton, LinearProgress, Fade, Alert } from '@mui/material';
+import { Box, Typography, Paper, IconButton, LinearProgress, Fade, Alert, Tooltip } from '@mui/material';
 import ErrorBoundary from '../../ErrorBoundary';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
 import { useWorkflowExecution } from '../../../hooks/useWorkflowExecution';
@@ -22,6 +22,7 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
   
   const updateNode = useWorkflowState((state) => state.updateNode);
   const setUploadedFile = useWorkflowState((state) => state.setUploadedFile);
+  const deleteNode = useWorkflowState((state) => state.deleteNode);
   const { uploadProgress, loading: isExecuting } = useWorkflowExecution();
 
   // Screen reader announcements
@@ -269,6 +270,28 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
         <Typography variant="subtitle1" fontWeight="bold">
           File Upload
         </Typography>
+        <Box sx={{ flexGrow: 1 }} />
+        <Tooltip title="Delete node (Del)" placement="top">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNode(id);
+            }}
+            sx={{
+              color: '#666',
+              '&:hover': {
+                color: '#f44336',
+                backgroundColor: '#ffebee',
+              },
+              width: 24,
+              height: 24,
+            }}
+            aria-label="Delete file node"
+          >
+            <X size={14} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Dropzone */}

@@ -20,6 +20,7 @@ import ReactFlow, {
   NodeChange,
   EdgeChange,
   useReactFlow,
+  SelectionMode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -181,22 +182,63 @@ const WorkflowCanvas: React.FC = () => {
     switch (event.key) {
       case 'Delete':
       case 'Backspace':
-        // Delete selected nodes (already handled by ReactFlow)
+        // Delete selected nodes and edges manually
+        event.preventDefault();
+        const selectedNodes = nodes.filter(node => node.selected);
+        selectedNodes.forEach(node => {
+          deleteStoreNode(node.id);
+        });
+        // Also clear selection
+        setSelectedNode(null);
         break;
       case 'Escape':
         // Deselect all
         setSelectedNode(null);
         break;
       case 'a':
+      case 'A':
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
-          // Could implement select all functionality here
+          // Select all nodes
+          setNodes((nds) => nds.map((node) => ({ ...node, selected: true })));
+          // Update store to reflect selection (select the first node for now)
+          if (storeNodes.length > 0) {
+            setSelectedNode(storeNodes[0] as any);
+          }
+        }
+        break;
+      case 'z':
+      case 'Z':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Undo (could be implemented)
+        }
+        break;
+      case 'y':
+      case 'Y':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Redo (could be implemented)
+        }
+        break;
+      case 'c':
+      case 'C':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Copy (could be implemented)
+        }
+        break;
+      case 'v':
+      case 'V':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Paste (could be implemented)
         }
         break;
       default:
         break;
     }
-  }, [setSelectedNode]);
+  }, [setSelectedNode, setNodes, storeNodes, nodes, deleteStoreNode]);
 
   // Add keyboard event listeners
   React.useEffect(() => {
@@ -306,10 +348,22 @@ const WorkflowCanvas: React.FC = () => {
           snapToGrid={true}
           snapGrid={[15, 15]}
           attributionPosition="bottom-left"
-          deleteKeyCode="Backspace"
           multiSelectionKeyCode="Shift"
+          selectionKeyCode="Shift"
+          selectionMode={SelectionMode.Partial}
+          selectNodesOnDrag={false}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          zoomOnDoubleClick={false}
+          minZoom={0.1}
+          maxZoom={2}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           aria-label="Workflow canvas. Use mouse to drag nodes and create connections. Press Escape to deselect. Press Delete to remove selected items."
           role="application"
+          style={{
+            backgroundColor: '#f8f9fa',
+          }}
         >
           <Background 
             variant={BackgroundVariant.Dots} 
@@ -344,6 +398,7 @@ const WorkflowCanvas: React.FC = () => {
                 paddingX: 3,
                 borderRadius: 2,
                 boxShadow: 2,
+                backdropFilter: 'blur(10px)',
               }}
               role="banner"
               aria-label="Workflow canvas header"
@@ -351,14 +406,53 @@ const WorkflowCanvas: React.FC = () => {
               <Typography variant="h6" fontWeight="bold" color="primary">
                 🔐 ThreatFlow Workflow Canvas
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ display: 'block', mt: 0.5 }}
-                aria-label="Keyboard shortcuts: Escape to deselect, Delete to remove selected items"
-              >
-                Press Escape to deselect • Delete to remove items
-              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 0.5,
+                    backgroundColor: 'rgba(0,0,0,0.04)',
+                    padding: '2px 6px',
+                    borderRadius: 1,
+                  }}
+                >
+                  <kbd style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>Esc</kbd>
+                  Deselect
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 0.5,
+                    backgroundColor: 'rgba(0,0,0,0.04)',
+                    padding: '2px 6px',
+                    borderRadius: 1,
+                  }}
+                >
+                  <kbd style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>Del</kbd>
+                  Delete
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 0.5,
+                    backgroundColor: 'rgba(0,0,0,0.04)',
+                    padding: '2px 6px',
+                    borderRadius: 1,
+                  }}
+                >
+                  <kbd style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>Ctrl+A</kbd>
+                  Select All
+                </Typography>
+              </Box>
             </Box>
           </Panel>
         </ReactFlow>

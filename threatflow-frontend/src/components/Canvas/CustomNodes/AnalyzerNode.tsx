@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect, memo } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
-import { Shield, AlertCircle } from 'lucide-react';
+import { Shield, AlertCircle, X } from 'lucide-react';
 import {
   Box,
   Typography,
@@ -10,6 +10,8 @@ import {
   FormControl,
   CircularProgress,
   SelectChangeEvent,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import ErrorBoundary from '../../ErrorBoundary';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
@@ -43,6 +45,7 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
 
   const { setNodes } = useReactFlow();
   const updateNode = useWorkflowState((state) => state.updateNode);
+  const deleteNode = useWorkflowState((state) => state.deleteNode);
 
   // Fetch analyzers on mount (singleton pattern)
   useEffect(() => {
@@ -160,6 +163,28 @@ const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, select
         <Typography variant="subtitle1" fontWeight="bold">
           Analyzer
         </Typography>
+        <Box sx={{ flexGrow: 1 }} />
+        <Tooltip title="Delete node (Del)" placement="top">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNode(id);
+            }}
+            sx={{
+              color: '#666',
+              '&:hover': {
+                color: '#f44336',
+                backgroundColor: '#ffebee',
+              },
+              width: 24,
+              height: 24,
+            }}
+            aria-label="Delete analyzer node"
+          >
+            <X size={14} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Analyzer Selection */}
