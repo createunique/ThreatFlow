@@ -17,7 +17,7 @@ import {
   Code,
 } from 'lucide-react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { RawJsonModal } from './RawJsonModal';
+import { RawJsonModal } from '../../../components/Canvas/CustomNodes/RawJsonModal';
 
 interface AnalyzerReport {
   name: string;
