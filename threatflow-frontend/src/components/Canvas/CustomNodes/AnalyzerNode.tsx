@@ -11,6 +11,7 @@ import {
   CircularProgress,
   SelectChangeEvent,
 } from '@mui/material';
+import ErrorBoundary from '../../ErrorBoundary';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
 import { AnalyzerNodeData, AnalyzerInfo } from '../../../types/workflow';
 import { api } from '../../../services/api';
@@ -35,7 +36,7 @@ const fetchAnalyzersOnce = async (): Promise<AnalyzerInfo[]> => {
   return analyzersFetchPromise;
 };
 
-const AnalyzerNode: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, selected }) => {
+const AnalyzerNodeContent: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, selected }) => {
   const [analyzers, setAnalyzers] = useState<AnalyzerInfo[]>(cachedAnalyzers || []);
   const [loading, setLoading] = useState(!cachedAnalyzers);
   const [error, setError] = useState<string | null>(null);
@@ -78,34 +79,39 @@ const AnalyzerNode: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, selected }) =
   }, []);
 
   const handleAnalyzerChange = (event: SelectChangeEvent<string>) => {
-    const analyzerName = event.target.value;
-    const analyzer = analyzers.find((a) => a.name === analyzerName);
+    try {
+      const analyzerName = event.target.value;
+      const analyzer = analyzers.find((a) => a.name === analyzerName);
 
-    if (analyzer) {
-      // Update React Flow state directly for immediate UI update
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === id) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                analyzer: analyzer.name,
-                description: analyzer.description,
-                analyzerType: analyzer.type,
-              },
-            };
-          }
-          return node;
-        })
-      );
+      if (analyzer) {
+        // Update React Flow state directly for immediate UI update
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === id) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  analyzer: analyzer.name,
+                  description: analyzer.description,
+                  analyzerType: analyzer.type,
+                },
+              };
+            }
+            return node;
+          })
+        );
 
-      // Also update Zustand store for persistence
-      updateNode(id, {
-        analyzer: analyzer.name,
-        description: analyzer.description,
-        analyzerType: analyzer.type,
-      });
+        // Also update Zustand store for persistence
+        updateNode(id, {
+          analyzer: analyzer.name,
+          description: analyzer.description,
+          analyzerType: analyzer.type,
+        });
+      }
+    } catch (error) {
+      console.error('Error changing analyzer:', error);
+      throw error; // Let error boundary catch it
     }
   };
 
@@ -215,6 +221,38 @@ const AnalyzerNode: FC<NodeProps<AnalyzerNodeData>> = ({ id, data, selected }) =
         </Box>
       )}
     </Paper>
+  );
+};
+
+const AnalyzerNode: FC<NodeProps<AnalyzerNodeData>> = (props) => {
+  return (
+    <ErrorBoundary
+      name={`Analyzer Node (${props.id})`}
+      fallback={
+        <Paper
+          elevation={props.selected ? 8 : 2}
+          sx={{
+            padding: 2,
+            minWidth: 280,
+            maxWidth: 300,
+            border: props.selected ? '2px solid #f44336' : '1px solid #f44336',
+            borderRadius: 2,
+            backgroundColor: '#ffebee',
+          }}
+        >
+          <Box textAlign="center" color="error.main">
+            <Typography variant="subtitle1" fontWeight="bold">
+              Analyzer Node Error
+            </Typography>
+            <Typography variant="caption">
+              Failed to load analyzer selection component
+            </Typography>
+          </Box>
+        </Paper>
+      }
+    >
+      <AnalyzerNodeContent {...props} />
+    </ErrorBoundary>
   );
 };
 

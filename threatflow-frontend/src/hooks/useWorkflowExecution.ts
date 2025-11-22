@@ -24,36 +24,36 @@ export const useWorkflowExecution = () => {
    * Execute workflow
    */
   const executeWorkflow = useCallback(async () => {
-    // Validation
-    if (!uploadedFile) {
-      setError('No file uploaded');
-      return null;
-    }
-
-    if (nodes.length === 0) {
-      setError('Workflow is empty');
-      return null;
-    }
-
-    // Check if file node exists
-    const hasFileNode = nodes.some((n) => n.type === 'file');
-    if (!hasFileNode) {
-      setError('Workflow must contain a file node');
-      return null;
-    }
-
-    // Check if analyzer nodes exist
-    const hasAnalyzer = nodes.some((n) => n.type === 'analyzer');
-    if (!hasAnalyzer) {
-      setError('Workflow must contain at least one analyzer');
-      return null;
-    }
-
-    setLoading(true);
-    setError(null);
-    setExecutionStatus('running');
-
     try {
+      // Validation
+      if (!uploadedFile) {
+        setError('No file uploaded');
+        return null;
+      }
+
+      if (nodes.length === 0) {
+        setError('Workflow is empty');
+        return null;
+      }
+
+      // Check if file node exists
+      const hasFileNode = nodes.some((n) => n.type === 'file');
+      if (!hasFileNode) {
+        setError('Workflow must contain a file node');
+        return null;
+      }
+
+      // Check if analyzer nodes exist
+      const hasAnalyzer = nodes.some((n) => n.type === 'analyzer');
+      if (!hasAnalyzer) {
+        setError('Workflow must contain at least one analyzer');
+        return null;
+      }
+
+      setLoading(true);
+      setError(null);
+      setExecutionStatus('running');
+
       // Submit workflow
       const response = await api.executeWorkflow(nodes, edges, uploadedFile);
 
@@ -64,8 +64,13 @@ export const useWorkflowExecution = () => {
       const finalStatus = await api.pollJobStatus(
         response.job_id,
         (status) => {
-          console.log('Status update:', status);
-          setStatusUpdates(status);
+          try {
+            console.log('Status update:', status);
+            setStatusUpdates(status);
+          } catch (updateError) {
+            console.error('Error updating status:', updateError);
+            // Don't throw here, just log the error
+          }
         }
       );
 

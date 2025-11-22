@@ -8,28 +8,34 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File as FileIcon, X } from 'lucide-react';
 import { Box, Typography, Paper, IconButton } from '@mui/material';
+import ErrorBoundary from '../../ErrorBoundary';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
 import { FileNodeData } from '../../../types/workflow';
 
-const FileNode: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) => {
+const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) => {
   const updateNode = useWorkflowState((state) => state.updateNode);
   const setUploadedFile = useWorkflowState((state) => state.setUploadedFile);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        console.log('File dropped:', file.name, file.size);
+      try {
+        const file = acceptedFiles[0];
+        if (file) {
+          console.log('File dropped:', file.name, file.size);
 
-        // Update node data
-        updateNode(id, {
-          file,
-          fileName: file.name,
-          fileSize: file.size,
-        } as any);
+          // Update node data
+          updateNode(id, {
+            file,
+            fileName: file.name,
+            fileSize: file.size,
+          } as any);
 
-        // Store file in global state
-        setUploadedFile(file);
+          // Store file in global state
+          setUploadedFile(file);
+        }
+      } catch (error) {
+        console.error('Error handling file drop:', error);
+        throw error; // Let error boundary catch it
       }
     },
     [id, updateNode, setUploadedFile]
@@ -47,12 +53,17 @@ const FileNode: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) => {
   });
 
   const handleRemoveFile = useCallback(() => {
-    updateNode(id, {
-      file: null,
-      fileName: '',
-      fileSize: 0,
-    } as any);
-    setUploadedFile(null);
+    try {
+      updateNode(id, {
+        file: null,
+        fileName: '',
+        fileSize: 0,
+      } as any);
+      setUploadedFile(null);
+    } catch (error) {
+      console.error('Error removing file:', error);
+      throw error; // Let error boundary catch it
+    }
   }, [id, updateNode, setUploadedFile]);
 
   return (
@@ -129,6 +140,37 @@ const FileNode: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) => {
         )}
       </Box>
     </Paper>
+  );
+};
+
+const FileNode: FC<NodeProps<FileNodeData>> = (props) => {
+  return (
+    <ErrorBoundary
+      name={`File Node (${props.id})`}
+      fallback={
+        <Paper
+          elevation={props.selected ? 8 : 2}
+          sx={{
+            padding: 2,
+            minWidth: 280,
+            border: props.selected ? '2px solid #f44336' : '1px solid #f44336',
+            borderRadius: 2,
+            backgroundColor: '#ffebee',
+          }}
+        >
+          <Box textAlign="center" color="error.main">
+            <Typography variant="subtitle1" fontWeight="bold">
+              File Node Error
+            </Typography>
+            <Typography variant="caption">
+              Failed to load file upload component
+            </Typography>
+          </Box>
+        </Paper>
+      }
+    >
+      <FileNodeContent {...props} />
+    </ErrorBoundary>
   );
 };
 

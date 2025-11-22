@@ -19,14 +19,13 @@ import ReactFlow, {
   Edge,
   NodeChange,
   EdgeChange,
-  applyNodeChanges,
-  applyEdgeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 import FileNode from './CustomNodes/FileNode';
 import AnalyzerNode from './CustomNodes/AnalyzerNode';
 import ResultNode from './CustomNodes/ResultNode';
+import ErrorBoundary from '../ErrorBoundary';
 import { useWorkflowState } from '../../hooks/useWorkflowState';
 import { Box, Typography } from '@mui/material';
 
@@ -150,63 +149,90 @@ const WorkflowCanvas: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={handleEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}
-        nodeTypes={nodeTypes}
-        fitView
-        snapToGrid={true}
-        snapGrid={[15, 15]}
-        attributionPosition="bottom-left"
-        deleteKeyCode="Backspace"
-        multiSelectionKeyCode="Shift"
-      >
-        <Background 
-          variant={BackgroundVariant.Dots} 
-          gap={16} 
-          size={1}
-          color="#aaa"
-        />
-        <Controls showInteractive={false} />
-        <MiniMap 
-          style={minimapStyle} 
-          zoomable 
-          pannable
-          nodeColor={(node) => {
-            switch (node.type) {
-              case 'file':
-                return '#2196f3';
-              case 'analyzer':
-                return '#4caf50';
-              case 'result':
-                return '#9c27b0';
-              default:
-                return '#666';
-            }
-          }}
-        />
-
-        <Panel position="top-center">
+      <ErrorBoundary
+        name="React Flow Canvas"
+        fallback={
           <Box
             sx={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              padding: 1.5,
-              paddingX: 3,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f5f5f5',
+              border: '2px dashed #ccc',
               borderRadius: 2,
-              boxShadow: 2,
             }}
           >
-            <Typography variant="h6" fontWeight="bold" color="primary">
-              🔐 ThreatFlow Workflow Canvas
-            </Typography>
+            <Box textAlign="center" color="error.main">
+              <Typography variant="h6" fontWeight="bold" mb={1}>
+                Canvas Error
+              </Typography>
+              <Typography variant="body2">
+                Failed to load workflow canvas. Please refresh the page.
+              </Typography>
+            </Box>
           </Box>
-        </Panel>
-      </ReactFlow>
+        }
+      >
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
+          nodeTypes={nodeTypes}
+          fitView
+          snapToGrid={true}
+          snapGrid={[15, 15]}
+          attributionPosition="bottom-left"
+          deleteKeyCode="Backspace"
+          multiSelectionKeyCode="Shift"
+        >
+          <Background 
+            variant={BackgroundVariant.Dots} 
+            gap={16} 
+            size={1}
+            color="#aaa"
+          />
+          <Controls showInteractive={false} />
+          <MiniMap 
+            style={minimapStyle} 
+            zoomable 
+            pannable
+            nodeColor={(node) => {
+              switch (node.type) {
+                case 'file':
+                  return '#2196f3';
+                case 'analyzer':
+                  return '#4caf50';
+                case 'result':
+                  return '#9c27b0';
+                default:
+                  return '#666';
+              }
+            }}
+          />
+
+          <Panel position="top-center">
+            <Box
+              sx={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: 1.5,
+                paddingX: 3,
+                borderRadius: 2,
+                boxShadow: 2,
+              }}
+            >
+              <Typography variant="h6" fontWeight="bold" color="primary">
+                🔐 ThreatFlow Workflow Canvas
+              </Typography>
+            </Box>
+          </Panel>
+        </ReactFlow>
+      </ErrorBoundary>
     </Box>
   );
 };
