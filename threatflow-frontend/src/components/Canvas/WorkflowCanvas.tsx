@@ -27,7 +27,8 @@ import AnalyzerNode from './CustomNodes/AnalyzerNode';
 import ResultNode from './CustomNodes/ResultNode';
 import ErrorBoundary from '../ErrorBoundary';
 import { useWorkflowState } from '../../hooks/useWorkflowState';
-import { Box, Typography } from '@mui/material';
+import { useWorkflowExecution } from '../../hooks/useWorkflowExecution';
+import { Box, Typography, Fade, LinearProgress } from '@mui/material';
 
 const nodeTypes: NodeTypes = {
   file: FileNode,
@@ -43,6 +44,7 @@ const WorkflowCanvas: React.FC = () => {
   const deleteStoreNode = useWorkflowState((state) => state.deleteNode);
   const deleteStoreEdge = useWorkflowState((state) => state.deleteEdge);
   const setSelectedNode = useWorkflowState((state) => state.setSelectedNode);
+  const { loading: isExecuting, uploadProgress } = useWorkflowExecution();
 
   // Local state for React Flow - synced with Zustand store
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<any>[]>(storeNodes as Node<any>[]);
@@ -149,6 +151,56 @@ const WorkflowCanvas: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+      {/* Global Execution Loading Overlay */}
+      <Fade in={isExecuting}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <Box
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              padding: 3,
+              borderRadius: 2,
+              boxShadow: 3,
+              textAlign: 'center',
+              minWidth: 300,
+            }}
+          >
+            <Typography variant="h6" color="primary" fontWeight="bold" mb={2}>
+              🔄 Executing Workflow
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Analyzing file and running analyzers...
+            </Typography>
+            <Box sx={{ width: '100%', mb: 1 }}>
+              <LinearProgress
+                variant={uploadProgress > 0 ? "determinate" : "indeterminate"}
+                value={uploadProgress > 0 ? uploadProgress : undefined}
+                sx={{ height: 8, borderRadius: 4 }}
+              />
+            </Box>
+            {uploadProgress > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Upload Progress: {uploadProgress}%
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </Fade>
+
       <ErrorBoundary
         name="React Flow Canvas"
         fallback={

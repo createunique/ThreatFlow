@@ -3,7 +3,7 @@
  * Connects to FastAPI backend on port 8030
  */
 
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosProgressEvent } from 'axios';
 import {
   AnalyzerInfo,
   ExecuteWorkflowResponse,
@@ -23,10 +23,22 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 30000, // 30 seconds
 });
 
-// Request interceptor (for debugging)
+// Loading state management
+let activeRequests = new Set<string>();
+let globalLoadingCallbacks: ((loading: boolean, requestId: string) => void)[] = [];
+
+// Request interceptor (for debugging and loading states)
 apiClient.interceptors.request.use(
   (config) => {
+    const requestId = `${config.method?.toUpperCase()}_${config.url}_${Date.now()}`;
+    (config as any).requestId = requestId;
+
+    activeRequests.add(requestId);
     console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+
+    // Notify loading state change
+    globalLoadingCallbacks.forEach(callback => callback(true, requestId));
+
     return config;
   },
   (error) => {
@@ -35,13 +47,25 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor (for error handling)
+// Response interceptor (for error handling and loading states)
 apiClient.interceptors.response.use(
   (response) => {
+    const requestId = (response.config as any).requestId;
+    if (requestId) {
+      activeRequests.delete(requestId);
+      globalLoadingCallbacks.forEach(callback => callback(false, requestId));
+    }
+
     console.log(`[API Response] ${response.status} ${response.config.url}`);
     return response;
   },
   (error: AxiosError) => {
+    const requestId = (error.config as any)?.requestId;
+    if (requestId) {
+      activeRequests.delete(requestId);
+      globalLoadingCallbacks.forEach(callback => callback(false, requestId));
+    }
+
     console.error('[API Response Error]', error.message);
     if (error.response) {
       console.error('Error Data:', error.response.data);
@@ -49,6 +73,29 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Loading state utilities
+export const apiLoading = {
+  // Subscribe to loading state changes
+  subscribe: (callback: (loading: boolean, requestId: string) => void) => {
+    globalLoadingCallbacks.push(callback);
+    return () => {
+      const index = globalLoadingCallbacks.indexOf(callback);
+      if (index > -1) {
+        globalLoadingCallbacks.splice(index, 1);
+      }
+    };
+  },
+
+  // Check if any requests are active
+  isLoading: () => activeRequests.size > 0,
+
+  // Get active request count
+  getActiveCount: () => activeRequests.size,
+
+  // Get active request IDs
+  getActiveRequests: () => Array.from(activeRequests),
+};
 
 // ============= API Methods =============
 
@@ -81,11 +128,13 @@ export const api = {
    * @param nodes - Workflow nodes
    * @param edges - Workflow edges
    * @param file - File to analyze
+   * @param onProgress - Optional progress callback
    */
   executeWorkflow: async (
     nodes: CustomNode[],
     edges: Edge[],
-    file: File
+    file: File,
+    onProgress?: (progress: number) => void
   ): Promise<ExecuteWorkflowResponse> => {
     const formData = new FormData();
 
@@ -103,6 +152,13 @@ export const api = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(progress);
+          }
+        },
+        timeout: 120000, // 2 minutes for file uploads
       }
     );
 

@@ -3,25 +3,32 @@
  * Allows drag-drop or click to upload files for analysis
  */
 
-import React, { FC, useCallback } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File as FileIcon, X } from 'lucide-react';
-import { Box, Typography, Paper, IconButton } from '@mui/material';
+import { Upload, File as FileIcon, X, Loader2 } from 'lucide-react';
+import { Box, Typography, Paper, IconButton, LinearProgress, Fade } from '@mui/material';
 import ErrorBoundary from '../../ErrorBoundary';
 import { useWorkflowState } from '../../../hooks/useWorkflowState';
+import { useWorkflowExecution } from '../../../hooks/useWorkflowExecution';
 import { FileNodeData } from '../../../types/workflow';
 
 const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const updateNode = useWorkflowState((state) => state.updateNode);
   const setUploadedFile = useWorkflowState((state) => state.setUploadedFile);
+  const { uploadProgress, loading: isExecuting } = useWorkflowExecution();
 
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       try {
         const file = acceptedFiles[0];
         if (file) {
+          setIsProcessing(true);
           console.log('File dropped:', file.name, file.size);
+
+          // Simulate file processing time (in real app, this might be validation, preview generation, etc.)
+          await new Promise(resolve => setTimeout(resolve, 500));
 
           // Update node data
           updateNode(id, {
@@ -36,6 +43,8 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
       } catch (error) {
         console.error('Error handling file drop:', error);
         throw error; // Let error boundary catch it
+      } finally {
+        setIsProcessing(false);
       }
     },
     [id, updateNode, setUploadedFile]
@@ -52,8 +61,13 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
     },
   });
 
-  const handleRemoveFile = useCallback(() => {
+  const handleRemoveFile = useCallback(async () => {
     try {
+      setIsProcessing(true);
+
+      // Simulate cleanup time
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       updateNode(id, {
         file: null,
         fileName: '',
@@ -63,6 +77,8 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
     } catch (error) {
       console.error('Error removing file:', error);
       throw error; // Let error boundary catch it
+    } finally {
+      setIsProcessing(false);
     }
   }, [id, updateNode, setUploadedFile]);
 
@@ -75,8 +91,48 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
         border: selected ? '2px solid #2196f3' : '1px solid #ccc',
         borderRadius: 2,
         backgroundColor: '#fff',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* Processing Overlay */}
+      <Fade in={isProcessing || isExecuting}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+          }}
+        >
+          <Loader2 size={32} className="animate-spin" color="#2196f3" />
+          <Typography variant="caption" color="primary" sx={{ mt: 1 }}>
+            {isExecuting
+              ? `Uploading file... ${uploadProgress}%`
+              : data.file
+              ? 'Removing file...'
+              : 'Processing file...'
+            }
+          </Typography>
+          {isExecuting ? (
+            <LinearProgress
+              variant="determinate"
+              value={uploadProgress}
+              sx={{ width: '80%', mt: 1 }}
+            />
+          ) : (
+            <LinearProgress sx={{ width: '80%', mt: 1 }} />
+          )}
+        </Box>
+      </Fade>
+
       {/* Handle (output) */}
       <Handle
         type="source"
@@ -102,18 +158,20 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
         {...getRootProps()}
         sx={{
           border: '2px dashed',
-          borderColor: isDragActive ? '#2196f3' : '#ccc',
+          borderColor: isDragActive ? '#2196f3' : isProcessing ? '#ff9800' : isExecuting ? '#4caf50' : '#ccc',
           borderRadius: 1,
           padding: 2,
           textAlign: 'center',
-          cursor: 'pointer',
-          backgroundColor: isDragActive ? '#e3f2fd' : '#fafafa',
+          cursor: isProcessing || isExecuting ? 'not-allowed' : 'pointer',
+          backgroundColor: isDragActive ? '#e3f2fd' : isProcessing ? '#fff3e0' : isExecuting ? '#e8f5e8' : '#fafafa',
           '&:hover': {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: isProcessing || isExecuting ? (isProcessing ? '#fff3e0' : '#e8f5e8') : '#f5f5f5',
           },
+          transition: 'all 0.2s ease-in-out',
+          opacity: isProcessing || isExecuting ? 0.7 : 1,
         }}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} disabled={isProcessing || isExecuting} />
         {data.file ? (
           <Box>
             <FileIcon size={32} color="#4caf50" />
@@ -123,15 +181,34 @@ const FileNodeContent: FC<NodeProps<FileNodeData>> = ({ id, data, selected }) =>
             <Typography variant="caption" color="text.secondary">
               {(data.fileSize / 1024).toFixed(2)} KB
             </Typography>
-            <IconButton size="small" onClick={handleRemoveFile} sx={{ mt: 1 }}>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveFile();
+              }}
+              sx={{ mt: 1 }}
+              disabled={isProcessing || isExecuting}
+            >
               <X size={16} />
             </IconButton>
           </Box>
         ) : (
           <Box>
-            <Upload size={32} color="#9e9e9e" />
+            {isProcessing ? (
+              <Loader2 size={32} className="animate-spin" color="#ff9800" />
+            ) : (
+              <Upload size={32} color="#9e9e9e" />
+            )}
             <Typography variant="body2" color="text.secondary" mt={1}>
-              {isDragActive ? 'Drop file here...' : 'Click or drag file here'}
+              {isExecuting
+                ? `Uploading... ${uploadProgress}%`
+                : isProcessing
+                ? 'Processing...'
+                : isDragActive
+                ? 'Drop file here...'
+                : 'Click or drag file here'
+              }
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Max 100MB

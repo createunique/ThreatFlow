@@ -12,6 +12,7 @@ export const useWorkflowExecution = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusUpdates, setStatusUpdates] = useState<JobStatusResponse | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const nodes = useWorkflowState((state) => state.nodes);
   const edges = useWorkflowState((state) => state.edges);
@@ -53,9 +54,15 @@ export const useWorkflowExecution = () => {
       setLoading(true);
       setError(null);
       setExecutionStatus('running');
+      setUploadProgress(0);
 
       // Submit workflow
-      const response = await api.executeWorkflow(nodes, edges, uploadedFile);
+      const response = await api.executeWorkflow(
+        nodes,
+        edges,
+        uploadedFile,
+        (progress) => setUploadProgress(progress)
+      );
 
       console.log('Workflow submitted:', response);
       setJobId(response.job_id);
@@ -118,6 +125,7 @@ export const useWorkflowExecution = () => {
     setLoading(false);
     setError(null);
     setStatusUpdates(null);
+    setUploadProgress(0);
     setJobId(null);
     setExecutionStatus('idle');
   }, [setJobId, setExecutionStatus]);
@@ -128,5 +136,6 @@ export const useWorkflowExecution = () => {
     loading,
     error,
     statusUpdates,
+    uploadProgress,
   };
 };
