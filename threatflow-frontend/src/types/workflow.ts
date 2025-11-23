@@ -123,6 +123,7 @@ export interface StageRouting {
   stage_id: number;
   target_nodes: string[];
   executed: boolean;
+  analyzers?: string[];
 }
 
 export interface ExecuteWorkflowResponse {

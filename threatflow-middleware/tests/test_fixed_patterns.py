@@ -139,6 +139,60 @@ class TestWorkflowPatterns:
         assert true_stage["condition"]["type"] == "verdict_malicious"
         assert true_stage["condition"]["source_analyzer"] == "ClamAV"
     
+    def test_pattern_5_chained_before_conditional(self, parser):
+        """File → Analyzer1 → Analyzer2 → Conditional → [AnalyzerA | AnalyzerB]"""
+        nodes = [
+            create_node("file-1", "file", {}),
+            create_node("analyzer-1", "analyzer", {"analyzer": "ClamAV"}),
+            create_node("analyzer-2", "analyzer", {"analyzer": "PE_Info"}),
+            create_node("conditional-1", "conditional", {
+                "conditionType": "verdict_malicious",
+                "sourceAnalyzer": "PE_Info"  # Depends on chained analyzer
+            }),
+            create_node("analyzer-true", "analyzer", {"analyzer": "Strings_Info"}),
+            create_node("analyzer-false", "analyzer", {"analyzer": "File_Info"}),
+            create_node("result-1", "result", {})
+        ]
+        edges = [
+            create_edge("file-1", "analyzer-1"),
+            create_edge("analyzer-1", "analyzer-2"),
+            create_edge("analyzer-2", "conditional-1"),
+            create_edge("conditional-1", "analyzer-true", "true-output"),
+            create_edge("conditional-1", "analyzer-false", "false-output"),
+            create_edge("analyzer-true", "result-1"),
+            create_edge("analyzer-false", "result-1")
+        ]
+        
+        parsed = parser.parse(nodes, edges)
+        
+        assert parsed["has_conditionals"] is True
+        assert len(parsed["stages"]) >= 3  # Stage 0 + TRUE + FALSE branches
+        
+        # Stage 0 should include both chained analyzers
+        stage_0 = parsed["stages"][0]
+        assert stage_0["stage_id"] == 0
+        assert "ClamAV" in stage_0["analyzers"]
+        assert "PE_Info" in stage_0["analyzers"]
+        assert stage_0["condition"] is None  # No condition for stage 0
+        
+        # Find TRUE branch stage
+        true_stage = next(
+            (s for s in parsed["stages"] if s.get("condition") and s.get("condition", {}).get("type") == "verdict_malicious" and not s.get("condition", {}).get("negate")),
+            None
+        )
+        assert true_stage is not None
+        assert true_stage["depends_on"] == "PE_Info"  # Depends on the chained analyzer
+        assert "Strings_Info" in true_stage["analyzers"]
+        
+        # Find FALSE branch stage
+        false_stage = next(
+            (s for s in parsed["stages"] if s.get("condition") and s.get("condition", {}).get("negate") is True),
+            None
+        )
+        assert false_stage is not None
+        assert false_stage["depends_on"] == "PE_Info"
+        assert "File_Info" in false_stage["analyzers"]
+    
     def test_edge_case_empty_workflow(self, parser):
         """Empty workflow should raise error"""
         with pytest.raises(ValueError, match="must contain a file node"):

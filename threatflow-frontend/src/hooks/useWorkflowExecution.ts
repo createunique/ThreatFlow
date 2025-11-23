@@ -39,74 +39,119 @@ const distributeResultsToResultNodes = (
   console.log('Result nodes:', resultNodes.map(n => n.id));
   console.log('=================================');
 
+  // Clear all result nodes first to ensure clean state
+  resultNodes.forEach(resultNode => {
+    updateNode(resultNode.id, {
+      jobId: null,
+      status: 'idle',
+      results: null,
+      error: null,
+    });
+  });
+
   // If workflow has conditionals and routing metadata, use it
   if (hasConditionals && stageRouting && stageRouting.length > 0) {
     console.log('Using conditional routing metadata for result distribution');
-    
-    // Create a map of which result nodes should receive results
-    const resultNodeShouldUpdate = new Map<string, boolean>();
-    
-    // Determine which result nodes are in executed stages
+
+    // Create maps to track which result nodes should receive results and from which analyzers
+    const resultNodeUpdates = new Map<string, { shouldUpdate: boolean, analyzers: string[], error?: string }>();
+
+    // Initialize all result nodes
+    resultNodes.forEach(resultNode => {
+      resultNodeUpdates.set(resultNode.id, { shouldUpdate: false, analyzers: [], error: 'Branch not executed (condition not met)' });
+    });
+
+    // Process each stage's routing
     stageRouting.forEach(routing => {
+      const stageAnalyzers = routing.analyzers || [];
+      const isExecuted = routing.executed;
+
       routing.target_nodes.forEach(nodeId => {
-        // Only update result nodes that are in EXECUTED stages
-        resultNodeShouldUpdate.set(nodeId, routing.executed);
+        if (resultNodeUpdates.has(nodeId)) {
+          const currentUpdate = resultNodeUpdates.get(nodeId)!;
+
+          if (isExecuted) {
+            // This stage executed - add its analyzers to this result node
+            currentUpdate.shouldUpdate = true;
+            currentUpdate.analyzers = Array.from(new Set([...currentUpdate.analyzers, ...stageAnalyzers])); // Unique analyzers
+            currentUpdate.error = undefined; // Clear any error
+          } else {
+            // This stage was skipped - keep the error message
+            // Don't change shouldUpdate or analyzers for skipped stages
+          }
+        }
       });
     });
-    
-    console.log('Result node routing map:', Array.from(resultNodeShouldUpdate.entries()));
-    
-    // Update result nodes based on routing
+
+    console.log('Result node updates map:', Array.from(resultNodeUpdates.entries()));
+
+    // Update result nodes based on the computed updates
     resultNodes.forEach(resultNode => {
-      const shouldUpdate = resultNodeShouldUpdate.get(resultNode.id);
-      
-      if (shouldUpdate === true) {
-        // This node was in an executed branch - show results
-        const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+      const updateInfo = resultNodeUpdates.get(resultNode.id);
+
+      if (updateInfo && updateInfo.shouldUpdate && updateInfo.analyzers.length > 0) {
+        // This node should receive results from specific analyzers
         const filteredResults = {
           ...allResults,
-          analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
-            connectedAnalyzers.includes(report.name)
+          analyzer_reports: allResults.analyzer_reports.filter((report: any) =>
+            updateInfo.analyzers.includes(report.name)
           )
         };
-        
+
         updateNode(resultNode.id, {
           jobId: allResults.job_id || null,
           status: allResults.status || 'reported_without_fails',
           results: filteredResults,
           error: null,
         });
-        
-        console.log(`✅ Result node ${resultNode.id} updated (branch executed) with ${filteredResults.analyzer_reports.length} reports:`,
-          filteredResults.analyzer_reports.map((r: any) => r.name));
-      } else if (shouldUpdate === false) {
-        // This node was in a skipped branch - clear results
+
+        console.log(`✅ Result node ${resultNode.id} updated (executed branch) with ${filteredResults.analyzer_reports.length} reports from analyzers:`,
+          updateInfo.analyzers);
+      } else if (updateInfo && !updateInfo.shouldUpdate) {
+        // This node is in a skipped branch
         updateNode(resultNode.id, {
           jobId: null,
           status: 'idle',
           results: null,
-          error: 'Branch not executed (condition not met)',
+          error: updateInfo.error || 'Branch not executed (condition not met)',
         });
-        
-        console.log(`⏭️ Result node ${resultNode.id} skipped (branch not executed)`);
+
+        console.log(`⏭️ Result node ${resultNode.id} skipped (${updateInfo.error})`);
       } else {
-        // No routing info for this node - use backward tracing (fallback)
+        // Fallback: no routing info or empty analyzers - use legacy logic
+        console.log(`⚠️ Result node ${resultNode.id} using fallback logic`);
         const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
-        const filteredResults = {
-          ...allResults,
-          analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
-            connectedAnalyzers.includes(report.name)
-          )
-        };
-        
-        updateNode(resultNode.id, {
-          jobId: allResults.job_id || null,
-          status: allResults.status || 'reported_without_fails',
-          results: filteredResults,
-          error: null,
-        });
-        
-        console.log(`⚠️ Result node ${resultNode.id} updated (fallback - no routing metadata) with ${filteredResults.analyzer_reports.length} reports`);
+        const executedAnalyzers = getExecutedAnalyzersFromRouting(stageRouting!, allResults);
+        const connectedExecutedAnalyzers = connectedAnalyzers.filter(analyzer => executedAnalyzers.includes(analyzer));
+
+        if (connectedExecutedAnalyzers.length > 0) {
+          const filteredResults = {
+            ...allResults,
+            analyzer_reports: allResults.analyzer_reports.filter((report: any) =>
+              connectedExecutedAnalyzers.includes(report.name)
+            )
+          };
+
+          updateNode(resultNode.id, {
+            jobId: allResults.job_id || null,
+            status: allResults.status || 'reported_without_fails',
+            results: filteredResults,
+            error: null,
+          });
+
+          console.log(`⚠️ Result node ${resultNode.id} updated (conditional fallback) with ${filteredResults.analyzer_reports.length} reports:`,
+            filteredResults.analyzer_reports.map((r: any) => r.name));
+        } else {
+          // No connected executed analyzers - show as skipped
+          updateNode(resultNode.id, {
+            jobId: null,
+            status: 'idle',
+            results: null,
+            error: 'No executed analyzers connected to this result node',
+          });
+
+          console.log(`⏭️ Result node ${resultNode.id} skipped (no connected executed analyzers)`);
+        }
       }
     });
   } else {
@@ -133,6 +178,26 @@ const distributeResultsToResultNodes = (
         filteredResults.analyzer_reports.map((r: any) => r.name));
     });
   }
+};
+
+/**
+ * Get all analyzers that were actually executed based on stage routing
+ */
+const getExecutedAnalyzersFromRouting = (stageRouting: StageRouting[], allResults: any): string[] => {
+  const executedAnalyzers: string[] = [];
+
+  stageRouting.forEach(routing => {
+    if (routing.executed && routing.analyzers) {
+      routing.analyzers.forEach((analyzer: string) => {
+        if (!executedAnalyzers.includes(analyzer)) {
+          executedAnalyzers.push(analyzer);
+        }
+      });
+    }
+  });
+
+  console.log('Executed analyzers from routing:', executedAnalyzers);
+  return executedAnalyzers;
 };
 
 /**
@@ -282,6 +347,12 @@ export const useWorkflowExecution = () => {
       }
       setJobId(jobId);
 
+      // Store routing metadata from initial response
+      const workflowMetadata = {
+        has_conditionals: response.has_conditionals || false,
+        stage_routing: response.stage_routing || []
+      };
+
       // Start polling with abort signal
       const finalStatus = await api.pollJobStatus(
         jobId,
@@ -304,8 +375,8 @@ export const useWorkflowExecution = () => {
       // Distribute results to appropriate result nodes based on workflow connections and routing
       distributeResultsToResultNodes(
         finalStatus.results,
-        finalStatus.stage_routing,
-        finalStatus.has_conditionals || false,
+        workflowMetadata.stage_routing,
+        workflowMetadata.has_conditionals,
         nodes,
         edges,
         updateNode

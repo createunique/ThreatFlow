@@ -58,7 +58,8 @@ async def execute_workflow(
                 stage_routing.append({
                     "stage_id": stage["stage_id"],
                     "target_nodes": stage.get("target_nodes", []),
-                    "executed": stage["stage_id"] in result["executed_stages"]
+                    "executed": stage["stage_id"] in result["executed_stages"],
+                    "analyzers": stage.get("analyzers", [])
                 })
             
             logger.info(f"Stage routing metadata: {stage_routing}")
