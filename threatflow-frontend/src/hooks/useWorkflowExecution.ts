@@ -6,13 +6,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '../services/api';
 import { useWorkflowState } from './useWorkflowState';
-import { JobStatusResponse, CustomNode, Edge } from '../types/workflow';
+import { JobStatusResponse, CustomNode, Edge, StageRouting } from '../types/workflow';
 
 /**
  * Distribute analysis results to the appropriate result nodes based on workflow connections
+ * Enhanced with conditional routing support
  */
 const distributeResultsToResultNodes = (
   allResults: any,
+  stageRouting: StageRouting[] | undefined,
+  hasConditionals: boolean,
   nodes: CustomNode[],
   edges: Edge[],
   updateNode: (id: string, data: any) => void
@@ -30,29 +33,106 @@ const distributeResultsToResultNodes = (
     return;
   }
 
-  // For each result node, find the analyzers that feed into it
-  resultNodes.forEach(resultNode => {
-    const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+  console.log('=== Result Distribution Debug ===');
+  console.log('Has conditionals:', hasConditionals);
+  console.log('Stage routing:', stageRouting);
+  console.log('Result nodes:', resultNodes.map(n => n.id));
+  console.log('=================================');
+
+  // If workflow has conditionals and routing metadata, use it
+  if (hasConditionals && stageRouting && stageRouting.length > 0) {
+    console.log('Using conditional routing metadata for result distribution');
     
-    // Filter results to only include reports from connected analyzers
-    const filteredResults = {
-      ...allResults,
-      analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
-        connectedAnalyzers.includes(report.name)
-      )
-    };
-
-    // Update the result node with filtered results
-    updateNode(resultNode.id, {
-      jobId: allResults.job_id || null,
-      status: allResults.status || 'reported_without_fails',
-      results: filteredResults,
-      error: null,
+    // Create a map of which result nodes should receive results
+    const resultNodeShouldUpdate = new Map<string, boolean>();
+    
+    // Determine which result nodes are in executed stages
+    stageRouting.forEach(routing => {
+      routing.target_nodes.forEach(nodeId => {
+        // Only update result nodes that are in EXECUTED stages
+        resultNodeShouldUpdate.set(nodeId, routing.executed);
+      });
     });
+    
+    console.log('Result node routing map:', Array.from(resultNodeShouldUpdate.entries()));
+    
+    // Update result nodes based on routing
+    resultNodes.forEach(resultNode => {
+      const shouldUpdate = resultNodeShouldUpdate.get(resultNode.id);
+      
+      if (shouldUpdate === true) {
+        // This node was in an executed branch - show results
+        const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+        const filteredResults = {
+          ...allResults,
+          analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
+            connectedAnalyzers.includes(report.name)
+          )
+        };
+        
+        updateNode(resultNode.id, {
+          jobId: allResults.job_id || null,
+          status: allResults.status || 'reported_without_fails',
+          results: filteredResults,
+          error: null,
+        });
+        
+        console.log(`✅ Result node ${resultNode.id} updated (branch executed) with ${filteredResults.analyzer_reports.length} reports:`,
+          filteredResults.analyzer_reports.map((r: any) => r.name));
+      } else if (shouldUpdate === false) {
+        // This node was in a skipped branch - clear results
+        updateNode(resultNode.id, {
+          jobId: null,
+          status: 'idle',
+          results: null,
+          error: 'Branch not executed (condition not met)',
+        });
+        
+        console.log(`⏭️ Result node ${resultNode.id} skipped (branch not executed)`);
+      } else {
+        // No routing info for this node - use backward tracing (fallback)
+        const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+        const filteredResults = {
+          ...allResults,
+          analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
+            connectedAnalyzers.includes(report.name)
+          )
+        };
+        
+        updateNode(resultNode.id, {
+          jobId: allResults.job_id || null,
+          status: allResults.status || 'reported_without_fails',
+          results: filteredResults,
+          error: null,
+        });
+        
+        console.log(`⚠️ Result node ${resultNode.id} updated (fallback - no routing metadata) with ${filteredResults.analyzer_reports.length} reports`);
+      }
+    });
+  } else {
+    // Non-conditional workflow - distribute to all result nodes (original behavior)
+    console.log('Using legacy result distribution (no conditionals)');
+    
+    resultNodes.forEach(resultNode => {
+      const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
+      const filteredResults = {
+        ...allResults,
+        analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
+          connectedAnalyzers.includes(report.name)
+        )
+      };
 
-    console.log(`Updated result node ${resultNode.id} with ${filteredResults.analyzer_reports.length} analyzer reports:`, 
-      filteredResults.analyzer_reports.map((r: any) => r.name));
-  });
+      updateNode(resultNode.id, {
+        jobId: allResults.job_id || null,
+        status: allResults.status || 'reported_without_fails',
+        results: filteredResults,
+        error: null,
+      });
+
+      console.log(`Result node ${resultNode.id} updated with ${filteredResults.analyzer_reports.length} reports:`, 
+        filteredResults.analyzer_reports.map((r: any) => r.name));
+    });
+  }
 };
 
 /**
@@ -195,11 +275,16 @@ export const useWorkflowExecution = () => {
       );
 
       console.log('Workflow submitted:', response);
-      setJobId(response.job_id);
+      // Handle both single job_id (linear) and job_ids (conditional) responses
+      const jobId = response.job_id || (response.job_ids && response.job_ids.length > 0 ? response.job_ids[0] : null);
+      if (!jobId) {
+        throw new Error('No job ID returned from server');
+      }
+      setJobId(jobId);
 
       // Start polling with abort signal
       const finalStatus = await api.pollJobStatus(
-        response.job_id,
+        jobId,
         (status) => {
           try {
             console.log('Status update:', status);
@@ -216,8 +301,15 @@ export const useWorkflowExecution = () => {
       console.log('Workflow completed:', finalStatus);
       setExecutionStatus('completed');
       
-      // Distribute results to appropriate result nodes based on workflow connections
-      distributeResultsToResultNodes(finalStatus.results, nodes, edges, updateNode);
+      // Distribute results to appropriate result nodes based on workflow connections and routing
+      distributeResultsToResultNodes(
+        finalStatus.results,
+        finalStatus.stage_routing,
+        finalStatus.has_conditionals || false,
+        nodes,
+        edges,
+        updateNode
+      );
       
       return finalStatus;
     } catch (err: any) {

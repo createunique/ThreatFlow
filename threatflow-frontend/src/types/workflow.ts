@@ -41,14 +41,36 @@ export interface ResultNodeData {
   error: string | null;
 }
 
+export interface ConditionalNodeData {
+  label: string;
+  conditionType: 
+    | 'verdict_malicious'           // Check if malware detected
+    | 'verdict_suspicious'          // Check if suspicious
+    | 'verdict_clean'               // Check if clean
+    | 'analyzer_success'            // Check if analyzer succeeded
+    | 'analyzer_failed'             // Check if analyzer failed
+    | 'field_equals'                // Check if field equals value
+    | 'field_contains'              // Check if field contains value
+    | 'field_greater_than'          // Check if field > value
+    | 'field_less_than'             // Check if field < value
+    | 'yara_rule_match'             // Check if YARA rule matched
+    | 'capability_detected';        // Check if Capa capability detected
+  
+  sourceAnalyzer: string;
+  fieldPath?: string;               // e.g., "report.pe_info.signature.valid"
+  expectedValue?: any;              // Value to compare against
+  operator?: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'regex';
+}
+
 // Union type for all node data
-export type CustomNodeData = FileNodeData | AnalyzerNodeData | ResultNodeData;
+export type CustomNodeData = FileNodeData | AnalyzerNodeData | ResultNodeData | ConditionalNodeData;
 
 // Extended Node types with custom data
 export type FileNode = Node<FileNodeData>;
 export type AnalyzerNode = Node<AnalyzerNodeData>;
 export type ResultNode = Node<ResultNodeData>;
-export type CustomNode = FileNode | AnalyzerNode | ResultNode;
+export type ConditionalNode = Node<ConditionalNodeData>;
+export type CustomNode = FileNode | AnalyzerNode | ResultNode | ConditionalNode;
 
 // Use Node<any> for workflow state to handle union types properly
 export type WorkflowNode = Node<any>;
@@ -93,12 +115,26 @@ export interface JobStatusResponse {
   analyzers_completed: number;
   analyzers_total: number;
   results: any | null;
+  has_conditionals?: boolean;
+  stage_routing?: StageRouting[];
+}
+
+export interface StageRouting {
+  stage_id: number;
+  target_nodes: string[];
+  executed: boolean;
 }
 
 export interface ExecuteWorkflowResponse {
   success: boolean;
-  job_id: number;
-  analyzers: string[];
+  job_id?: number; // For backwards compatibility
+  job_ids?: number[]; // For conditional workflows
+  analyzers?: string[];
+  total_stages?: number;
+  executed_stages?: number[];
+  skipped_stages?: number[];
+  has_conditionals?: boolean;
+  stage_routing?: StageRouting[]; // NEW: Routing metadata for conditional workflows
   message: string;
 }
 

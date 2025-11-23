@@ -1,0 +1,14 @@
+This file contains suspicious content for testing:
+- cmd.exe /c whoami
+- powershell -ExecutionPolicy Bypass
+- net user hacker password /add
+- reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+- CreateRemoteThread
+- VirtualAllocEx
+- ShellExecute
+- WinExec
+- system("rm -rf /")
+- eval(base64_decode(""))
+- <script>alert('XSS')</script>
+- SELECT * FROM users WHERE password=''
+- tgrgtr tyrug yug

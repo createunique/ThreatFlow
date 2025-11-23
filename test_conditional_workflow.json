@@ -1,0 +1,30 @@
+{
+  "name": "Test Conditional Logic",
+  "description": "Test conditional workflow with File_Info analyzer",
+  "stages": [
+    {
+      "stage_id": 0,
+      "depends_on": null,
+      "condition": null,
+      "analyzers": ["File_Info"]
+    },
+    {
+      "stage_id": 1,
+      "depends_on": 0,
+      "condition": {
+        "type": "verdict_malicious",
+        "source_analyzer": "File_Info"
+      },
+      "analyzers": ["Strings_Info"]
+    },
+    {
+      "stage_id": 2,
+      "depends_on": 0,
+      "condition": {
+        "type": "analyzer_success",
+        "source_analyzer": "File_Info"
+      },
+      "analyzers": ["Doc_Info"]
+    }
+  ]
+}

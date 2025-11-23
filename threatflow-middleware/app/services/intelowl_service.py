@@ -3,22 +3,46 @@ IntelOwl API wrapper service
 Uses pyintelowl v5.1.0 client
 Also implements direct database query workaround for broken pagination
 Enhanced with container detection for analyzer availability
+Enterprise-grade error handling with schema-based validation and recovery
 """
 
 from pyintelowl import IntelOwl, IntelOwlClientException
 from app.config import settings
+from app.services.analyzer_schema import schema_manager, AnalyzerSchemaManager
+from app.services.condition_evaluator import ConditionEvaluatorMixin
 import logging
 import asyncio
 import subprocess
 import json
 from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-class IntelOwlService:
+
+@dataclass
+class EvaluationResult:
+    """Result of condition evaluation with confidence and error tracking"""
+    result: bool
+    confidence: float  # 0.0 to 1.0
+    errors: List[str]
+    recovery_used: Optional[str]  # None, 'schema_fallback', 'generic_fallback', 'safe_default'
+    evaluation_path: str  # Which evaluation strategy succeeded
+
+
+class RecoveryStrategy(Enum):
+    """Recovery strategies for condition evaluation failures"""
+    PRIMARY = "primary"
+    SCHEMA_FALLBACK = "schema_fallback"
+    GENERIC_FALLBACK = "generic_fallback"
+    SAFE_DEFAULT = "safe_default"
+
+class IntelOwlService(ConditionEvaluatorMixin):
     """
     Wrapper around pyintelowl client for async operations
     Handles file analysis submission, result polling, and analyzer availability detection
+    Enhanced with schema-based validation and multi-level error recovery
     """
     
     # Analyzers that are available in malware_tools_analyzers container
@@ -206,7 +230,7 @@ class IntelOwlService:
                 "progress": None,  # IntelOwl doesn't provide progress
                 "analyzers_completed": len(job.get("analyzer_reports", [])),
                 "analyzers_total": len(job.get("analyzers_to_execute", [])),
-                "results": job if job.get("status") in ["reported_without_fails", "reported_with_fails"] else None
+                "results": job if job.get("status") in ["reported_without_fails", "reported_with_fails", "failed"] else None
             }
             
             return status_dict
@@ -545,6 +569,457 @@ print(json.dumps(result))
                     "containers_detected": {}
                 }
             }
+    
+    async def execute_workflow_with_conditionals(
+        self,
+        file_path: str,
+        stages: List[Dict[str, Any]],
+        file_name: str,
+        tlp: str = "CLEAR"
+    ) -> Dict[str, Any]:
+        """
+        Execute workflow with conditional logic (Phase 4)
+        
+        Args:
+            file_path: Local path to file
+            stages: List of execution stages from parser
+            file_name: Original filename
+            tlp: Traffic Light Protocol
+        
+        Returns:
+            {
+                "job_ids": [1, 2, 3],
+                "all_results": {
+                    "stage_0": {...},
+                    "stage_1": {...}
+                },
+                "total_stages_executed": 2,
+                "skipped_stages": [2]
+            }
+        """
+        all_results = {}
+        job_ids = []
+        executed_stages = []
+        skipped_stages = []
+        
+        logger.info(f"Starting conditional workflow execution with {len(stages)} total stages")
+        
+        for stage in stages:
+            stage_id = stage["stage_id"]
+            depends_on = stage.get("depends_on")
+            condition = stage.get("condition")
+            analyzers = stage["analyzers"]
+            target_nodes = stage.get("target_nodes", [])
+            
+            # Check if stage should execute
+            if depends_on is None:
+                # Stage 0: Always execute
+                should_execute = True
+                logger.info(f"📋 Stage {stage_id}: Initial stage, executing analyzers={analyzers}")
+            else:
+                # Conditional stage: evaluate condition
+                should_execute = self._evaluate_condition(condition, all_results)
+                condition_desc = condition.get('type', 'unknown')
+                if condition.get('negate'):
+                    condition_desc = f"NOT {condition_desc}"
+                logger.info(
+                    f"🔀 Stage {stage_id}: Condition '{condition_desc}' evaluated to {should_execute}, "
+                    f"target_nodes={target_nodes}"
+                )
+            
+            if should_execute:
+                # Check if stage has analyzers to execute
+                if not analyzers or len(analyzers) == 0:
+                    # Result-only stage (no analyzers, just routing to result nodes)
+                    logger.info(
+                        f"✅ Stage {stage_id}: Result-only (no analyzers), routing to {target_nodes}"
+                    )
+                    all_results[f"stage_{stage_id}"] = {
+                        "stage_id": stage_id,
+                        "type": "result_only",
+                        "target_nodes": target_nodes,
+                        "message": "Routing to result nodes based on condition"
+                    }
+                    executed_stages.append(stage_id)
+                    continue
+                
+                try:
+                    logger.info(f"▶️  Stage {stage_id}: Executing with analyzers={analyzers}")
+                    
+                    # Submit analysis
+                    job_id = await self.submit_file_analysis(
+                        file_path=file_path,
+                        analyzers=analyzers,
+                        file_name=file_name,
+                        tlp=tlp
+                    )
+                    
+                    job_ids.append(job_id)
+                    
+                    # Wait for completion
+                    stage_results = await self.wait_for_completion(job_id)
+                    all_results[f"stage_{stage_id}"] = stage_results
+                    executed_stages.append(stage_id)
+                    
+                    logger.info(f"✅ Stage {stage_id} completed successfully")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Stage {stage_id} failed: {e}")
+                    all_results[f"stage_{stage_id}"] = {"error": str(e)}
+            else:
+                logger.info(
+                    f"⏭️  Stage {stage_id}: SKIPPED (condition not met), "
+                    f"would have routed to {target_nodes}"
+                )
+                skipped_stages.append(stage_id)
+                continue  # CRITICAL: Actually skip this stage
+        
+        return {
+            "job_ids": job_ids,
+            "all_results": all_results,
+            "total_stages_executed": len(executed_stages),
+            "executed_stages": executed_stages,
+            "skipped_stages": skipped_stages
+        }
+    
+    def _evaluate_condition(
+        self,
+        condition: Optional[Dict[str, Any]],
+        results: Dict[str, Any]
+    ) -> bool:
+        """
+        Evaluate condition with enterprise-grade error handling and recovery
+        
+        Uses multi-level fallback strategy:
+        1. Primary: Direct field evaluation
+        2. Schema Fallback: Use schema-defined patterns
+        3. Generic Fallback: Pattern matching
+        4. Safe Default: Conservative assumption
+        """
+        if not condition:
+            return True
+        
+        # Check for negate flag (for FALSE branches)
+        should_negate = condition.get("negate", False)
+        
+        # Handle legacy NOT wrapper for backwards compatibility
+        if condition.get("type") == "NOT":
+            inner_condition = condition.get("inner")
+            if inner_condition:
+                # Evaluate inner condition and negate result
+                inner_result = self._evaluate_condition(inner_condition, results)
+                logger.debug(f"NOT condition: inner={inner_result}, result={not inner_result}")
+                return not inner_result
+            else:
+                logger.warning("NOT condition missing 'inner' field, defaulting to False")
+                return False
+        
+        # Evaluate the condition
+        eval_result = self._evaluate_with_recovery(condition, results)
+        
+        # Log evaluation details
+        if eval_result.confidence < 1.0:
+            logger.warning(
+                f"Condition evaluation used fallback strategy: {eval_result.recovery_used}, "
+                f"confidence: {eval_result.confidence}, errors: {eval_result.errors}"
+            )
+        
+        # Apply negation if needed
+        final_result = not eval_result.result if should_negate else eval_result.result
+        
+        if should_negate:
+            logger.debug(f"Negated condition: original={eval_result.result}, final={final_result}")
+        
+        return final_result
+    
+    def _evaluate_with_recovery(
+        self,
+        condition: Dict[str, Any],
+        results: Dict[str, Any]
+    ) -> EvaluationResult:
+        """
+        Evaluate condition with multiple fallback strategies
+        Returns detailed evaluation result with confidence scoring
+        """
+        errors = []
+        
+        # Validate condition structure
+        is_valid, validation_errors = schema_manager.validate_condition(condition)
+        if not is_valid:
+            logger.warning(f"Condition validation failed: {validation_errors}")
+            errors.extend(validation_errors)
+        
+        logger.debug(f"Evaluating condition: {condition}")
+        logger.debug(f"Available results: {list(results.keys())}")
+        
+        cond_type = condition.get("type")
+        source_analyzer = condition.get("source_analyzer")
+        
+        # Handle NOT condition
+        if cond_type == "NOT":
+            inner_condition = condition.get("inner")
+            inner_result = self._evaluate_with_recovery(inner_condition, results)
+            return EvaluationResult(
+                result=not inner_result.result,
+                confidence=inner_result.confidence,
+                errors=inner_result.errors,
+                recovery_used=inner_result.recovery_used,
+                evaluation_path=f"NOT({inner_result.evaluation_path})"
+            )
+        
+        # Find analyzer results
+        analyzer_report = self._find_analyzer_report(source_analyzer, results)
+        
+        if not analyzer_report:
+            logger.warning(f"Analyzer {source_analyzer} results not found")
+            return EvaluationResult(
+                result=False,
+                confidence=0.0,
+                errors=[f"Analyzer {source_analyzer} results not found"],
+                recovery_used=RecoveryStrategy.SAFE_DEFAULT.value,
+                evaluation_path="analyzer_not_found"
+            )
+        
+        # Strategy 1: PRIMARY - Direct evaluation
+        try:
+            result = self._evaluate_primary(condition, analyzer_report)
+            return EvaluationResult(
+                result=result,
+                confidence=1.0,
+                errors=[],
+                recovery_used=None,
+                evaluation_path="primary"
+            )
+        except Exception as e:
+            logger.debug(f"Primary evaluation failed: {e}")
+            errors.append(f"Primary: {str(e)}")
+        
+        # Strategy 2: SCHEMA FALLBACK - Use schema-defined patterns
+        try:
+            result = self._evaluate_with_schema_fallback(condition, analyzer_report)
+            return EvaluationResult(
+                result=result,
+                confidence=0.8,
+                errors=errors,
+                recovery_used=RecoveryStrategy.SCHEMA_FALLBACK.value,
+                evaluation_path="schema_fallback"
+            )
+        except Exception as e:
+            logger.debug(f"Schema fallback failed: {e}")
+            errors.append(f"Schema: {str(e)}")
+        
+        # Strategy 3: GENERIC FALLBACK - Pattern matching
+        try:
+            result = self._evaluate_generic_fallback(condition, analyzer_report)
+            return EvaluationResult(
+                result=result,
+                confidence=0.5,
+                errors=errors,
+                recovery_used=RecoveryStrategy.GENERIC_FALLBACK.value,
+                evaluation_path="generic_fallback"
+            )
+        except Exception as e:
+            logger.debug(f"Generic fallback failed: {e}")
+            errors.append(f"Generic: {str(e)}")
+        
+        # Strategy 4: SAFE DEFAULT
+        result = self._get_safe_default(condition)
+        return EvaluationResult(
+            result=result,
+            confidence=0.0,
+            errors=errors,
+            recovery_used=RecoveryStrategy.SAFE_DEFAULT.value,
+            evaluation_path="safe_default"
+        )
+    
+    def _find_analyzer_report(self, analyzer_name: str, results: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Find analyzer report from results"""
+        for stage_key, stage_data in results.items():
+            if isinstance(stage_data, dict) and "analyzer_reports" in stage_data:
+                for report in stage_data.get("analyzer_reports", []):
+                    if report.get("name") == analyzer_name:
+                        return report
+        return None
+    
+    def _evaluate_primary(self, condition: Dict[str, Any], analyzer_report: Dict[str, Any]) -> bool:
+        """Primary evaluation strategy - direct field access"""
+        cond_type = condition.get("type")
+        report_data = analyzer_report.get("report", {})
+        
+        # Verdict-based conditions
+        if cond_type == "verdict_malicious":
+            # PRIORITY 1: Direct boolean field check (highest confidence)
+            if "malicious" in report_data:
+                if isinstance(report_data["malicious"], bool):
+                    logger.debug(f"Direct boolean malicious field: {report_data['malicious']}")
+                    return report_data["malicious"]
+            
+            # Check verdict field first (some analyzers use this)
+            verdict = report_data.get("verdict", "").lower()
+            if verdict:
+                is_malicious = any(term in verdict for term in ["malicious", "malware", "infected"])
+                logger.debug(f"Verdict check: {verdict} -> {is_malicious}")
+                return is_malicious
+
+            # For ClamAV and similar scanners, check detections or raw_report
+            detections = report_data.get("detections", [])
+            if detections:
+                logger.debug(f"Detections found: {detections} -> True")
+                return True
+
+            # Check raw_report for infection indicators (ClamAV style)
+            raw_report = report_data.get("raw_report", "").lower()
+            if "infected files:" in raw_report and "1" in raw_report.split("infected files:")[1].split()[0]:
+                logger.debug(f"Raw report indicates infection: {raw_report[:100]}... -> True")
+                return True
+
+            # Analyzer-specific patterns for malware detection
+            analyzer_name = analyzer_report.get("name", "").lower()
+            
+            # File analysis tools don't detect malware - they're always "clean"
+            if analyzer_name in ["file_info", "strings_info", "doc_info"]:
+                logger.debug(f"File analysis tool {analyzer_name} - always clean -> False")
+                return False
+            
+            # Special handling for ClamAV - check detections array specifically
+            if analyzer_name == "clamav":
+                # For ClamAV, only return True if there are actual detections
+                # Don't use generic text matching as "infected" appears even with 0 detections
+                has_detections = bool(detections)
+                logger.debug(f"ClamAV detections check: {detections} -> {has_detections}")
+                return has_detections
+            
+            # For other analyzers, check if they have any error-free results that might indicate malware
+            if isinstance(report_data, dict) and report_data:
+                # Check for common malware indicators in various analyzer responses
+                report_str = str(report_data).lower()
+
+                # Generic malware indicators
+                malware_indicators = [
+                    "malicious", "malware", "virus", "trojan", "ransomware",
+                    "suspicious", "threat", "infected", "exploit", "backdoor"
+                ]
+
+                for indicator in malware_indicators:
+                    if indicator in report_str:
+                        logger.debug(f"Found malware indicator '{indicator}' in {analyzer_name} report -> True")
+                        return True
+
+            logger.debug(f"No malicious indicators found in {analyzer_name} report")
+            return False
+        
+        elif cond_type == "verdict_suspicious":
+            verdict = report_data.get("verdict", "").lower()
+            return "suspicious" in verdict
+        
+        elif cond_type == "verdict_clean":
+            verdict = report_data.get("verdict", "").lower()
+            is_clean = any(term in verdict for term in ["clean", "safe", "benign"])
+            logger.debug(f"Clean check: {verdict} -> {is_clean}")
+            return is_clean
+        
+        elif cond_type == "analyzer_success":
+            status = analyzer_report.get("status")
+            return status == "SUCCESS"
+        
+        elif cond_type == "analyzer_failed":
+            status = analyzer_report.get("status")
+            return status != "SUCCESS"
+        
+        # Field-based conditions
+        elif cond_type in ["field_equals", "field_contains", "field_greater_than", "field_less_than"]:
+            field_path = condition.get("field_path", "")
+            expected_value = condition.get("expected_value")
+            
+            if not field_path or expected_value is None:
+                raise ValueError(f"Field path or expected value missing for {cond_type}")
+            
+            # Navigate JSON path using mixin method
+            current = self._navigate_field_path(report_data, field_path)
+            
+            if current is None:
+                raise ValueError(f"Field path '{field_path}' not found in report")
+            
+            if cond_type == "field_equals":
+                result = current == expected_value
+                logger.debug(f"field_equals: {current} == {expected_value} -> {result}")
+                return result
+            elif cond_type == "field_contains":
+                result = self._check_contains(current, expected_value)
+                logger.debug(f"field_contains: '{expected_value}' in '{current}' -> {result}")
+                return result
+            elif cond_type == "field_greater_than":
+                try:
+                    result = float(current) > float(expected_value)
+                    logger.debug(f"field_greater_than: {current} > {expected_value} -> {result}")
+                    return result
+                except (ValueError, TypeError):
+                    raise ValueError(f"Cannot compare {current} > {expected_value}")
+            elif cond_type == "field_less_than":
+                try:
+                    result = float(current) < float(expected_value)
+                    logger.debug(f"field_less_than: {current} < {expected_value} -> {result}")
+                    return result
+                except (ValueError, TypeError):
+                    raise ValueError(f"Cannot compare {current} < {expected_value}")
+        
+        elif cond_type == "yara_rule_match":
+            # Check if YARA analyzer found matches
+            yara_matches = report_data.get("matches", [])
+            if isinstance(yara_matches, list) and len(yara_matches) > 0:
+                logger.debug(f"YARA matches found: {len(yara_matches)} -> True")
+                return True
+            logger.debug("No YARA matches found -> False")
+            return False
+        
+        elif cond_type == "capability_detected":
+            # Check if analyzer detected specific capabilities
+            capabilities = report_data.get("capabilities", [])
+            expected_capability = condition.get("expected_value", "")
+            if isinstance(capabilities, list):
+                result = expected_capability in capabilities
+                logger.debug(f"capability_detected: '{expected_capability}' in {capabilities} -> {result}")
+                return result
+            logger.debug(f"capabilities field not found or not a list: {capabilities}")
+            return False
+        
+        elif cond_type == "has_detections":
+            # Check if analyzer has any detections (generic)
+            detections = report_data.get("detections", [])
+            if isinstance(detections, list) and len(detections) > 0:
+                logger.debug(f"Detections found: {len(detections)} -> True")
+                return True
+            
+            # Also check for other detection fields
+            detection_fields = ["signatures", "rules", "alerts", "threats"]
+            for field in detection_fields:
+                if field in report_data and isinstance(report_data[field], list) and len(report_data[field]) > 0:
+                    logger.debug(f"Detections found in {field}: {len(report_data[field])} -> True")
+                    return True
+            
+            logger.debug("No detections found -> False")
+            return False
+        
+        elif cond_type == "has_errors":
+            # Check if analyzer report contains errors
+            errors = report_data.get("errors", [])
+            if isinstance(errors, list) and len(errors) > 0:
+                logger.debug(f"Errors found: {errors} -> True")
+                return True
+            logger.debug("No errors found -> False")
+            return False
+        
+        elif cond_type == "custom_field":
+            # Legacy support for custom field conditions
+            field_path = condition.get("field_path", "")
+            expected_value = condition.get("expected_value")
+            
+            # Navigate JSON path using mixin method
+            current = self._navigate_field_path(report_data, field_path)
+            return current == expected_value
+        
+        # Unknown condition type
+        raise ValueError(f"Unknown condition type: {cond_type}")
 
 # Global service instance
 intel_service = IntelOwlService()

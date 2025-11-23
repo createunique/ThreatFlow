@@ -1,0 +1,65 @@
+{
+  "ClamAV": {
+    "status": "SUCCESS",
+    "report": {
+      "detections": [],
+      "raw_report": "\n----------- SCAN SUMMARY -----------\nInfected files: 0\nTime: 0.007 sec (0 m 0 s)\nStart Date: 2025:11:22 22:34:01\nEnd Date:   2025:11:22 22:34:01\n"
+    },
+    "errors": [],
+    "job_id": 43
+  },
+  "Doc_Info": {
+    "status": "SUCCESS",
+    "report": {
+      "uris": [],
+      "msodde": "",
+      "olevba": {
+        "xlm_macro": false,
+        "macro_data": [
+          {
+            "filename": "/opt/deploy/files_required/866a53583cacbbbd60c8f4c9e91a7d43",
+            "vba_code": "X5O!P%@AP[4\\\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*\n",
+            "ole_stream": "",
+            "vba_filename": "/opt/deploy/files_required/866a53583cacbbbd60c8f4c9e91a7d43"
+          }
+        ],
+        "macro_found": true,
+        "is_encrypted": false
+      },
+      "mraptor": "ok",
+      "extracted_CVEs": []
+    },
+    "errors": [],
+    "job_id": 57
+  },
+  "File_Info": {
+    "status": "SUCCESS",
+    "report": {
+      "md5": "866a53583cacbbbd60c8f4c9e91a7d43",
+      "sha1": "fb3e14bebcfdcea6f154f065bc558dd0f3ffb1b2",
+      "tlsh": "T1C5A022003B0EEE0BA20B00200033E0B00808020F2CF00A2820A03038C83308803EC238",
+      "magic": "ASCII text",
+      "sha256": "c7611eb6156380f67d0b326c3ac42a61ac60fff1496eeabbcd92609a18d08d10",
+      "ssdeep": "3:a+Jn19QrvsgzsVqSwHqN:tJ1ywgzsky",
+      "exiftool": {
+        "ExifTool:ExifToolVersion": 13.29
+      },
+      "filetype": "TXT",
+      "mimetype": "text/plain"
+    },
+    "errors": [],
+    "job_id": 44
+  },
+  "Strings_Info": {
+    "status": "SUCCESS",
+    "report": {
+      "data": [
+        "X5O!P%@AP[4\\\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+      ],
+      "uris": [],
+      "exceeded_max_number_of_strings": false
+    },
+    "errors": [],
+    "job_id": 51
+  }
+}

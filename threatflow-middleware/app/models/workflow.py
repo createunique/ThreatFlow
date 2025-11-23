@@ -1,5 +1,6 @@
 """
 Pydantic models for request/response validation
+Enhanced with conditional logic support for Phase 4
 """
 
 from pydantic import BaseModel, Field
@@ -10,8 +11,24 @@ class NodeType(str, Enum):
     """Supported node types in workflow"""
     FILE = "file"
     ANALYZER = "analyzer"
-    CONDITIONAL = "conditional"
+    CONDITIONAL = "conditional"  # NEW: Phase 4
     RESULT = "result"
+
+class ConditionType(str, Enum):
+    """Types of conditions for conditional nodes"""
+    VERDICT_MALICIOUS = "verdict_malicious"
+    VERDICT_SUSPICIOUS = "verdict_suspicious"
+    VERDICT_CLEAN = "verdict_clean"
+    ANALYZER_SUCCESS = "analyzer_success"
+    ANALYZER_FAILED = "analyzer_failed"
+    CUSTOM_FIELD = "custom_field"
+
+class ConditionalData(BaseModel):
+    """Configuration data for conditional nodes"""
+    condition_type: ConditionType
+    source_analyzer: str  # Which analyzer's results to check
+    field_path: Optional[str] = None  # JSON path for custom field checks
+    expected_value: Optional[Any] = None  # Expected value for comparison
 
 class WorkflowNode(BaseModel):
     """Represents a single node in the workflow canvas"""
@@ -19,6 +36,7 @@ class WorkflowNode(BaseModel):
     type: NodeType = Field(..., description="Node type")
     data: Dict[str, Any] = Field(default_factory=dict, description="Node configuration")
     position: Optional[Dict[str, float]] = None
+    conditional_data: Optional[ConditionalData] = None  # NEW: Phase 4
 
 class WorkflowEdge(BaseModel):
     """Represents a connection between nodes"""

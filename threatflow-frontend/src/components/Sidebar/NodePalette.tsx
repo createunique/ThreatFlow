@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Box, Paper, Typography, Divider } from '@mui/material';
-import { Upload, Shield, FileText } from 'lucide-react';
+import { Upload, Shield, FileText, GitBranch } from 'lucide-react';
 
 interface NodePaletteItem {
   type: string;
@@ -29,6 +29,13 @@ const nodeItems: NodePaletteItem[] = [
     icon: <Shield size={24} />,
     color: '#4caf50',
     description: 'Select IntelOwl analyzer',
+  },
+  {
+    type: 'conditional',
+    label: 'Conditional',
+    icon: <GitBranch size={24} />,
+    color: '#ff9800',
+    description: 'If/then/else logic',
   },
   {
     type: 'result',

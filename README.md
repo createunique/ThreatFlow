@@ -46,6 +46,15 @@ ThreatFlow is a comprehensive visual malware analysis platform that integrates I
 - Professional Material-UI interface
 - TypeScript for type safety
 
+### Phase 4: Conditional Logic ✅ **NEW!**
+**Dynamic workflow branching based on analysis results**
+- Conditional nodes with if/then/else logic
+- 6 condition types: malicious, suspicious, clean, success, failed, custom field
+- Multi-stage workflow execution with automatic stage skipping
+- Visual true/false branch outputs (green/red)
+- Backwards compatible with linear workflows
+- Sequential execution with dependency tracking
+
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
@@ -211,21 +220,33 @@ curl -s -I http://localhost:3000 | head -1 && echo " ✅ Frontend OK"
      - **YARA**: YARA rule matching
      - **PEiD**: PE file analysis
 
-4. **Connect the Nodes:**
+4. **Add Conditional Nodes (Phase 4 ✨):**
+   - Drag "🔀 Conditional" node onto canvas
+   - Connect analyzer output to conditional input
+   - Connect conditional TRUE output (green) to downstream analyzers
+   - Connect conditional FALSE output (red) to alternative path
+   - Supports: malicious/clean verdicts, success/failure, custom conditions
+
+5. **Connect the Nodes:**
    - Drag from output handle (right side) of File node
    - Connect to input handle (left side) of Analyzer nodes
+   - Use conditional nodes to create branching logic
 
-5. **Execute the Workflow:**
+6. **Execute the Workflow:**
    - Click the "▶️ Execute" button at bottom
    - Monitor real-time progress in status panel
    - View detailed results when complete
+   - See which conditional branches executed
 
 ### Example Workflow
 ```
-File Upload → File_Info → ClamAV → VirusTotal → Results
-     ↓           ↓         ↓         ↓         ↓
-  sample.exe  metadata  malware   reputation  report
+File Upload → File_Info → ClamAV → Conditional: Is Malicious?
+     ↓           ↓         ↓              ↓
+  sample.exe  metadata  malware     ├─ TRUE → PE_Info → Capa_Info
+                scan     detected    └─ FALSE → (skip deep analysis)
 ```
+
+**Phase 4 Feature:** The conditional node enables dynamic branching based on ClamAV's verdict, automatically running deep analysis only for malicious files!
 
 ## 🔧 Configuration
 
@@ -457,6 +478,12 @@ services:
 - **IntelOwl Slack**: https://honeynetpublic.slack.com/
 - **ThreatFlow Repository**: [Your repository URL]
 
+### Phase 4 Documentation (Conditional Logic)
+- **Complete Guide**: `Docs/README_PHASE-4.md` (5,000+ lines)
+- **Quick Start**: `Docs/PHASE-4-QUICKSTART.md` (5-minute test)
+- **Summary**: `Docs/PHASE-4-SUMMARY.md` (executive overview)
+- **Checklist**: `Docs/PHASE-4-CHECKLIST.md` (implementation verification)
+
 ### API References
 - **Middleware API**: http://localhost:8030/docs (Swagger)
 - **IntelOwl API**: http://localhost/api/docs
@@ -503,7 +530,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Last Updated:** November 22, 2025
-**Version:** Complete ThreatFlow Platform
-**Status:** ✅ Fully Functional and Tested</content>
+**Last Updated:** November 23, 2025
+**Version:** Phase 4 Complete - Conditional Logic Added
+**Status:** ✅ Fully Functional with Dynamic Branching</content>
 <parameter name="filePath">/home/anonymous/COLLEGE/ThreatFlow/README.md

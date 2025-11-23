@@ -27,6 +27,7 @@ import 'reactflow/dist/style.css';
 import FileNode from './CustomNodes/FileNode';
 import AnalyzerNode from './CustomNodes/AnalyzerNode';
 import ResultNode from './CustomNodes/ResultNode';
+import { ConditionalNode } from './CustomNodes/ConditionalNode';
 import ErrorBoundary from '../ErrorBoundary';
 import { useWorkflowState } from '../../hooks/useWorkflowState';
 import { useWorkflowExecution } from '../../hooks/useWorkflowExecution';
@@ -36,6 +37,7 @@ const nodeTypes: NodeTypes = {
   file: FileNode,
   analyzer: AnalyzerNode,
   result: ResultNode,
+  conditional: ConditionalNode,
 };
 
 const WorkflowCanvas: React.FC = () => {

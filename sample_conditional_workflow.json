@@ -1,0 +1,124 @@
+{
+  "nodes": [
+    {
+      "id": "file-1",
+      "type": "file",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Upload File",
+        "file": null
+      }
+    },
+    {
+      "id": "clamav-1",
+      "type": "analyzer",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "ClamAV",
+        "analyzer": "ClamAV"
+      }
+    },
+    {
+      "id": "conditional-1",
+      "type": "conditional",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "Is Malicious?",
+        "conditionType": "verdict_malicious",
+        "sourceAnalyzer": "ClamAV"
+      }
+    },
+    {
+      "id": "strings-1",
+      "type": "analyzer",
+      "position": { "x": 700, "y": 50 },
+      "data": {
+        "label": "Strings Info",
+        "analyzer": "Strings_Info"
+      }
+    },
+    {
+      "id": "yara-1",
+      "type": "analyzer",
+      "position": { "x": 700, "y": 150 },
+      "data": {
+        "label": "YARA Scan",
+        "analyzer": "Yara"
+      }
+    },
+    {
+      "id": "fileinfo-1",
+      "type": "analyzer",
+      "position": { "x": 700, "y": 250 },
+      "data": {
+        "label": "File Info",
+        "analyzer": "File_Info"
+      }
+    },
+    {
+      "id": "result-1",
+      "type": "result",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "label": "Results",
+        "jobId": null,
+        "status": "idle",
+        "results": null,
+        "error": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "file-to-clamav",
+      "source": "file-1",
+      "target": "clamav-1",
+      "type": "default"
+    },
+    {
+      "id": "clamav-to-conditional",
+      "source": "clamav-1",
+      "target": "conditional-1",
+      "type": "default"
+    },
+    {
+      "id": "conditional-true-strings",
+      "source": "conditional-1",
+      "target": "strings-1",
+      "sourceHandle": "true-output",
+      "type": "default"
+    },
+    {
+      "id": "conditional-true-yara",
+      "source": "conditional-1",
+      "target": "yara-1",
+      "sourceHandle": "true-output",
+      "type": "default"
+    },
+    {
+      "id": "conditional-false-fileinfo",
+      "source": "conditional-1",
+      "target": "fileinfo-1",
+      "sourceHandle": "false-output",
+      "type": "default"
+    },
+    {
+      "id": "strings-to-result",
+      "source": "strings-1",
+      "target": "result-1",
+      "type": "default"
+    },
+    {
+      "id": "yara-to-result",
+      "source": "yara-1",
+      "target": "result-1",
+      "type": "default"
+    },
+    {
+      "id": "fileinfo-to-result",
+      "source": "fileinfo-1",
+      "target": "result-1",
+      "type": "default"
+    }
+  ]
+}

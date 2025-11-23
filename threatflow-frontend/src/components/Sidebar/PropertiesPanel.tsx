@@ -1,15 +1,37 @@
 /**
  * Inspector Panel
  * Unified panel showing properties for non-result nodes and detailed results for result nodes
+ * Enhanced with intelligent condition builder and real-time validation
  */
 
-import React from 'react';
-import { Box, Paper, Typography, Divider, Chip } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Paper, Typography, Divider, Chip, Button } from '@mui/material';
 import { Info, Upload, Shield, FileText } from 'lucide-react';
 import { useWorkflowState } from '../../hooks/useWorkflowState';
+import { ConditionalNodeData } from '../../types/workflow';
+import { ConditionBuilder } from '../ConditionBuilder/ConditionBuilder';
+import { ValidationPanel } from '../Validation/ValidationPanel';
+import { getAllAnalyzers } from '../../services/schemaApi';
 
 const InspectorPanel: React.FC = () => {
   const selectedNode = useWorkflowState((state) => state.selectedNode);
+  const nodes = useWorkflowState((state) => state.nodes);
+  const edges = useWorkflowState((state) => state.edges);
+  const [availableAnalyzers, setAvailableAnalyzers] = useState<string[]>([]);
+  const [showValidation, setShowValidation] = useState(false);
+
+  // Fetch available analyzers on mount
+  useEffect(() => {
+    const fetchAnalyzers = async () => {
+      try {
+        const response = await getAllAnalyzers();
+        setAvailableAnalyzers(response.analyzers);
+      } catch (error) {
+        console.error('Failed to fetch analyzers:', error);
+      }
+    };
+    fetchAnalyzers();
+  }, []);
 
   const getNodeIcon = (type?: string) => {
     switch (type) {
@@ -158,6 +180,14 @@ const InspectorPanel: React.FC = () => {
           </>
         )}
 
+        {type === 'conditional' && (
+          <ConditionalNodeConfig 
+            nodeId={id} 
+            data={data as ConditionalNodeData}
+            availableAnalyzers={availableAnalyzers}
+          />
+        )}
+
         <Divider sx={{ my: 2 }} />
 
         {/* Raw Data (collapsible) */}
@@ -205,15 +235,90 @@ const InspectorPanel: React.FC = () => {
       }}
     >
       {/* Header */}
-      <Typography variant="h6" gutterBottom fontWeight="bold">
-        Properties
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6" fontWeight="bold">
+          Properties
+        </Typography>
+        <Button
+          size="small"
+          variant={showValidation ? 'contained' : 'outlined'}
+          onClick={() => setShowValidation(!showValidation)}
+          sx={{ fontSize: '0.7rem' }}
+        >
+          {showValidation ? 'Hide' : 'Validate'}
+        </Button>
+      </Box>
 
       <Divider sx={{ mb: 2 }} />
 
-      {renderNodeProperties()}
+      {/* Show ValidationPanel or Node Properties */}
+      {showValidation ? (
+        <ValidationPanel
+          nodes={nodes.map(n => ({ id: n.id, type: n.type || 'unknown', data: n.data }))}
+          edges={edges.map(e => ({ id: e.id, source: e.source, target: e.target }))}
+          onValidationComplete={(isValid) => console.log('Validation complete:', isValid)}
+        />
+      ) : (
+        renderNodeProperties()
+      )}
     </Paper>
   );
 };
 
 export default InspectorPanel;
+
+// Conditional Node Configuration Component with Intelligent Builder
+const ConditionalNodeConfig: React.FC<{ 
+  nodeId: string; 
+  data: ConditionalNodeData;
+  availableAnalyzers: string[];
+}> = ({ nodeId, data, availableAnalyzers }) => {
+  const updateNode = useWorkflowState((state) => state.updateNode);
+
+  const handleUpdate = useCallback((updatedData: {
+    conditionType: string;
+    sourceAnalyzer: string;
+    fieldPath?: string;
+    expectedValue?: any;
+    operator?: string;
+  }) => {
+    updateNode(nodeId, {
+      ...data,
+      ...updatedData,
+    });
+  }, [nodeId, data, updateNode]);
+
+  return (
+    <Box>
+      <ConditionBuilder
+        nodeId={nodeId}
+        initialData={{
+          conditionType: data.conditionType || '',
+          sourceAnalyzer: data.sourceAnalyzer || '',
+          fieldPath: data.fieldPath,
+          expectedValue: data.expectedValue,
+          operator: data.operator,
+        }}
+        onUpdate={handleUpdate}
+        availableAnalyzers={availableAnalyzers}
+      />
+
+      <Divider sx={{ my: 2 }} />
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" fontWeight="bold" mb={1} display="block">
+          How it works:
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block">
+          • TRUE output: When condition is met
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block">
+          • FALSE output: When condition is NOT met
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+          Connect analyzers to the TRUE/FALSE outputs to create conditional workflows.
+        </Typography>
+      </Box>
+    </Box>
+  );
+};

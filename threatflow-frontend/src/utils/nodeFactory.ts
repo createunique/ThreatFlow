@@ -46,6 +46,19 @@ export const createAnalyzerNode = (position: { x: number; y: number }): Node<Ana
   };
 };
 
+export const createConditionalNode = (position: { x: number; y: number }): Node => {
+  return {
+    id: generateNodeId('conditional'),
+    type: 'conditional',
+    position,
+    data: {
+      label: 'Is Malicious?',
+      conditionType: 'verdict_malicious',
+      sourceAnalyzer: '',
+    },
+  };
+};
+
 export const createResultNode = (position: { x: number; y: number }): Node<ResultNodeData> => {
   return {
     id: generateNodeId('result'),
@@ -64,5 +77,6 @@ export const createResultNode = (position: { x: number; y: number }): Node<Resul
 export const nodeFactory = {
   file: createFileNode,
   analyzer: createAnalyzerNode,
+  conditional: createConditionalNode,
   result: createResultNode,
 };

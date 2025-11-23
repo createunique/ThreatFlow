@@ -1,0 +1,21 @@
+.conditional-node {
+  transition: all 0.2s ease;
+}
+
+.conditional-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255,152,0,0.3) !important;
+}
+
+.conditional-node.selected {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(255,152,0,0.3);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(255,152,0,0.5);
+  }
+}
