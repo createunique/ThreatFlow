@@ -124,12 +124,17 @@ class WorkflowParser:
         )
         
         if stage_0_analyzers:
+            # Find result nodes directly connected to these pre-conditional analyzers
+            stage_0_result_nodes = self._find_result_nodes_for_analyzers(
+                stage_0_analyzers, node_map, edges
+            )
+            
             stages.append({
                 "stage_id": 0,
                 "analyzers": stage_0_analyzers,
                 "depends_on": None,
                 "condition": None,
-                "target_nodes": [],
+                "target_nodes": stage_0_result_nodes,
                 "description": "Pre-conditional analysis"
             })
             # Mark these analyzers as processed
