@@ -931,81 +931,25 @@ print(json.dumps(result))
         return None
     
     def _evaluate_primary(self, condition: Dict[str, Any], analyzer_report: Dict[str, Any]) -> bool:
-        """Primary evaluation strategy - direct field access"""
+        """
+        Primary evaluation strategy - direct field access
+        
+        UPDATED: Based on actual IntelOwl analyzer responses from comprehensive testing.
+        Field paths are verified against real response data.
+        """
         cond_type = condition.get("type")
         report_data = analyzer_report.get("report", {})
+        analyzer_name = analyzer_report.get("name", "")
         
         # Verdict-based conditions
         if cond_type == "verdict_malicious":
-            # PRIORITY 1: Direct boolean field check (highest confidence)
-            if "malicious" in report_data:
-                if isinstance(report_data["malicious"], bool):
-                    logger.debug(f"Direct boolean malicious field: {report_data['malicious']}")
-                    return report_data["malicious"]
-            
-            # Check verdict field first (some analyzers use this)
-            verdict = report_data.get("verdict", "").lower()
-            if verdict:
-                is_malicious = any(term in verdict for term in ["malicious", "malware", "infected"])
-                logger.debug(f"Verdict check: {verdict} -> {is_malicious}")
-                return is_malicious
-
-            # For ClamAV and similar scanners, check detections or raw_report
-            detections = report_data.get("detections", [])
-            if detections:
-                logger.debug(f"Detections found: {detections} -> True")
-                return True
-
-            # Check raw_report for infection indicators (ClamAV style)
-            raw_report = report_data.get("raw_report", "").lower()
-            if "infected files:" in raw_report and "1" in raw_report.split("infected files:")[1].split()[0]:
-                logger.debug(f"Raw report indicates infection: {raw_report[:100]}... -> True")
-                return True
-
-            # Analyzer-specific patterns for malware detection
-            analyzer_name = analyzer_report.get("name", "").lower()
-            
-            # File analysis tools don't detect malware - they're always "clean"
-            if analyzer_name in ["file_info", "strings_info", "doc_info"]:
-                logger.debug(f"File analysis tool {analyzer_name} - always clean -> False")
-                return False
-            
-            # Special handling for ClamAV - check detections array specifically
-            if analyzer_name == "clamav":
-                # For ClamAV, only return True if there are actual detections
-                # Don't use generic text matching as "infected" appears even with 0 detections
-                has_detections = bool(detections)
-                logger.debug(f"ClamAV detections check: {detections} -> {has_detections}")
-                return has_detections
-            
-            # For other analyzers, check if they have any error-free results that might indicate malware
-            if isinstance(report_data, dict) and report_data:
-                # Check for common malware indicators in various analyzer responses
-                report_str = str(report_data).lower()
-
-                # Generic malware indicators
-                malware_indicators = [
-                    "malicious", "malware", "virus", "trojan", "ransomware",
-                    "suspicious", "threat", "infected", "exploit", "backdoor"
-                ]
-
-                for indicator in malware_indicators:
-                    if indicator in report_str:
-                        logger.debug(f"Found malware indicator '{indicator}' in {analyzer_name} report -> True")
-                        return True
-
-            logger.debug(f"No malicious indicators found in {analyzer_name} report")
-            return False
+            return self._check_malicious(analyzer_name, report_data, analyzer_report)
         
         elif cond_type == "verdict_suspicious":
-            verdict = report_data.get("verdict", "").lower()
-            return "suspicious" in verdict
+            return self._check_suspicious(analyzer_name, report_data, analyzer_report)
         
         elif cond_type == "verdict_clean":
-            verdict = report_data.get("verdict", "").lower()
-            is_clean = any(term in verdict for term in ["clean", "safe", "benign"])
-            logger.debug(f"Clean check: {verdict} -> {is_clean}")
-            return is_clean
+            return self._check_clean(analyzer_name, report_data, analyzer_report)
         
         elif cond_type == "analyzer_success":
             status = analyzer_report.get("status")
@@ -1054,11 +998,34 @@ print(json.dumps(result))
         
         elif cond_type == "yara_rule_match":
             # Check if YARA analyzer found matches
-            yara_matches = report_data.get("matches", [])
-            if isinstance(yara_matches, list) and len(yara_matches) > 0:
-                logger.debug(f"YARA matches found: {len(yara_matches)} -> True")
+            # Real response: Multiple rule set fields, each containing array of matches
+            # Also check data_model.signatures
+            
+            # Check data_model.signatures first (from job level)
+            job_data_model = analyzer_report.get("data_model", {})
+            signatures = job_data_model.get("signatures", [])
+            if isinstance(signatures, list) and len(signatures) > 0:
+                logger.debug(f"YARA data_model.signatures: {len(signatures)} matches -> True")
                 return True
-            logger.debug("No YARA matches found -> False")
+            
+            # Check individual rule set fields
+            yara_rule_sets = [
+                "yara-rules_rules", "elastic_protections-artifacts",
+                "advanced-threat-research_yara-rules", "neo23x0_signature-base",
+                "bartblaze_yara-rules", "intezer_yara-rules", "inquest_yara-rules"
+            ]
+            
+            for rule_set in yara_rule_sets:
+                matches = report_data.get(rule_set, [])
+                if isinstance(matches, list) and len(matches) > 0:
+                    # Filter out utility rules
+                    for match in matches:
+                        rule_path = match.get("path", "") if isinstance(match, dict) else ""
+                        if "utils/" not in rule_path:
+                            logger.debug(f"YARA {rule_set} match found -> True")
+                            return True
+            
+            logger.debug("No significant YARA matches found -> False")
             return False
         
         elif cond_type == "capability_detected":
@@ -1073,20 +1040,87 @@ print(json.dumps(result))
             return False
         
         elif cond_type == "has_detections":
-            # Check if analyzer has any detections (generic)
-            detections = report_data.get("detections", [])
-            if isinstance(detections, list) and len(detections) > 0:
-                logger.debug(f"Detections found: {len(detections)} -> True")
-                return True
+            # Check if analyzer has any detections
+            # Use analyzer-specific detection fields based on real responses
+            analyzer_lower = analyzer_name.lower() if analyzer_name else ""
             
-            # Also check for other detection fields
-            detection_fields = ["signatures", "rules", "alerts", "threats"]
-            for field in detection_fields:
-                if field in report_data and isinstance(report_data[field], list) and len(report_data[field]) > 0:
-                    logger.debug(f"Detections found in {field}: {len(report_data[field])} -> True")
+            # ClamAV: report.detections[]
+            if analyzer_lower == "clamav":
+                detections = report_data.get("detections", [])
+                has_det = isinstance(detections, list) and len(detections) > 0
+                logger.debug(f"ClamAV has_detections: {has_det}")
+                return has_det
+            
+            # Yara: Check data_model.signatures and rule set fields
+            if analyzer_lower == "yara":
+                job_data_model = analyzer_report.get("data_model", {})
+                signatures = job_data_model.get("signatures", [])
+                if isinstance(signatures, list) and len(signatures) > 0:
+                    logger.debug(f"Yara has_detections via signatures: True")
                     return True
+                # Check rule sets
+                for key, value in report_data.items():
+                    if isinstance(value, list) and len(value) > 0:
+                        logger.debug(f"Yara has_detections via {key}: True")
+                        return True
+                return False
             
-            logger.debug("No detections found -> False")
+            # Doc_Info: mraptor != "ok"
+            if analyzer_lower == "doc_info":
+                mraptor = report_data.get("mraptor", "")
+                has_det = mraptor != "ok" and mraptor != ""
+                logger.debug(f"Doc_Info has_detections (mraptor={mraptor}): {has_det}")
+                return has_det
+            
+            # Quark_Engine: crimes[] or score > 0
+            if analyzer_lower == "quark_engine":
+                crimes = report_data.get("crimes", [])
+                score = report_data.get("total_score", 0)
+                has_det = (isinstance(crimes, list) and len(crimes) > 0) or score > 0
+                logger.debug(f"Quark_Engine has_detections: {has_det}")
+                return has_det
+            
+            # APK_Artifacts: permissions[] (any permission counts as detection)
+            if analyzer_lower == "apk_artifacts":
+                permissions = report_data.get("permission", [])
+                has_det = isinstance(permissions, list) and len(permissions) > 0
+                logger.debug(f"APK_Artifacts has_detections (permissions): {has_det}")
+                return has_det
+            
+            # Rtf_Info: ole_objects[] or follina[]
+            if analyzer_lower == "rtf_info":
+                rtfobj = report_data.get("rtfobj", {})
+                ole_objects = rtfobj.get("ole_objects", []) if isinstance(rtfobj, dict) else []
+                follina = report_data.get("follina", [])
+                has_det = (isinstance(ole_objects, list) and len(ole_objects) > 0) or \
+                          (isinstance(follina, list) and len(follina) > 0)
+                logger.debug(f"Rtf_Info has_detections: {has_det}")
+                return has_det
+            
+            # BoxJS: IOC.json[]
+            if analyzer_lower == "boxjs":
+                ioc = report_data.get("IOC.json", [])
+                has_det = isinstance(ioc, list) and len(ioc) > 0
+                logger.debug(f"BoxJS has_detections: {has_det}")
+                return has_det
+            
+            # APKiD: files[]
+            if analyzer_lower == "apkid":
+                files = report_data.get("files", [])
+                has_det = isinstance(files, list) and len(files) > 0
+                logger.debug(f"APKiD has_detections: {has_det}")
+                return has_det
+            
+            # Generic fallback: check common detection fields
+            detection_fields = ["detections", "signatures", "rules", "alerts", "threats", "matches", "crimes"]
+            for field in detection_fields:
+                if field in report_data:
+                    value = report_data[field]
+                    if isinstance(value, list) and len(value) > 0:
+                        logger.debug(f"Generic has_detections via {field}: True")
+                        return True
+            
+            logger.debug(f"has_detections: No detections found -> False")
             return False
         
         elif cond_type == "has_errors":
@@ -1109,6 +1143,404 @@ print(json.dumps(result))
         
         # Unknown condition type
         raise ValueError(f"Unknown condition type: {cond_type}")
+    
+    def _check_malicious(self, analyzer_name: str, report_data: Dict[str, Any], analyzer_report: Dict[str, Any]) -> bool:
+        """
+        Check if analyzer detected malware/malicious content.
+        
+        VERIFIED FIELD PATHS from actual IntelOwl responses:
+        - ClamAV: report.detections[] - array of detection names (e.g., ['Eicar-Signature'])
+        - Yara: Check multiple rule set fields for any matches
+        - Doc_Info: report.mraptor = "suspicious" indicates macro malware
+        - Quark_Engine: report.threat_level and report.total_score
+        - APK_Artifacts: report.permission[] for dangerous permissions
+        - BoxJS: report.IOC.json for indicators of compromise
+        - File_Info, Strings_Info: metadata only, cannot detect malware
+        """
+        analyzer_lower = analyzer_name.lower() if analyzer_name else ""
+        
+        # ====== ClamAV ======
+        # Real response: {"detections": ["Eicar-Signature"], "raw_report": "...FOUND..."}
+        if analyzer_lower == "clamav":
+            detections = report_data.get("detections", [])
+            if isinstance(detections, list) and len(detections) > 0:
+                logger.debug(f"ClamAV detections: {detections} -> True")
+                return True
+            # Also check raw_report for "Infected files: X" where X > 0
+            raw_report = report_data.get("raw_report", "")
+            if "FOUND" in raw_report:
+                logger.debug(f"ClamAV raw_report contains 'FOUND' -> True")
+                return True
+            logger.debug(f"ClamAV no detections -> False")
+            return False
+        
+        # ====== Yara ======
+        # Real response: Multiple fields like 'yara-rules_rules', 'elastic_protections-artifacts', etc.
+        # Each field is an array of matched rules. Check if ANY field has matches.
+        # Also check data_model.evaluation == "malicious"
+        if analyzer_lower == "yara":
+            # Check data_model.evaluation first (from job level)
+            job_data_model = analyzer_report.get("data_model", {})
+            if job_data_model.get("evaluation") == "malicious":
+                logger.debug(f"Yara data_model.evaluation = 'malicious' -> True")
+                return True
+            
+            # Check data_model.signatures
+            signatures = job_data_model.get("signatures", [])
+            if isinstance(signatures, list) and len(signatures) > 0:
+                logger.debug(f"Yara data_model.signatures has {len(signatures)} matches -> True")
+                return True
+            
+            # Check individual rule set fields in report
+            # These are the actual field names from real responses
+            yara_rule_sets = [
+                "yara-rules_rules",
+                "elastic_protections-artifacts", 
+                "advanced-threat-research_yara-rules",
+                "neo23x0_signature-base",
+                "bartblaze_yara-rules",
+                "intezer_yara-rules",
+                "inquest_yara-rules",
+                "reversinglabs_reversinglabs-yara-rules",
+                "mandiant_red_team_tool_countermeasures",
+                "dr4k0nia_yara-rules",
+                "embee-research_yara",
+                "fboldewin_yara-rules",
+                "jpcertcc_jpcert-yara",
+                "sbousseaden_yarahunts",
+                "strangerealintel_dailyioc",
+                "stratosphereips_yara-rules",
+                "sifalcon_detection",
+                "elceef_yara-rulz",
+                "yaraify-api.abuse.ch_yaraify-rules"
+            ]
+            
+            for rule_set in yara_rule_sets:
+                matches = report_data.get(rule_set, [])
+                if isinstance(matches, list) and len(matches) > 0:
+                    # Check if it's a security-relevant match (not just domain.yar utility rule)
+                    for match in matches:
+                        rule_path = match.get("path", "") if isinstance(match, dict) else ""
+                        rule_match = match.get("match", "") if isinstance(match, dict) else ""
+                        # Skip utility rules that aren't malware indicators
+                        if "utils/domain.yar" in rule_path or "utils/url.yar" in rule_path:
+                            continue
+                        # This is a real malware detection
+                        logger.debug(f"Yara {rule_set}: {rule_match} -> True")
+                        return True
+            
+            logger.debug(f"Yara no significant matches -> False")
+            return False
+        
+        # ====== Doc_Info ======
+        # Real response: {"mraptor": "suspicious"} for malicious macros, "ok" for clean
+        if analyzer_lower == "doc_info":
+            mraptor = report_data.get("mraptor", "")
+            if mraptor == "suspicious":
+                logger.debug(f"Doc_Info mraptor = 'suspicious' -> True")
+                return True
+            # Check olevba for suspicious VBA keywords
+            olevba = report_data.get("olevba", {})
+            if isinstance(olevba, dict):
+                macro_data = olevba.get("macro_data", [])
+                for macro in macro_data:
+                    if isinstance(macro, dict):
+                        suspicious_keywords = macro.get("suspicious_keywords", [])
+                        if suspicious_keywords:
+                            logger.debug(f"Doc_Info olevba suspicious keywords: {suspicious_keywords} -> True")
+                            return True
+            logger.debug(f"Doc_Info no suspicious indicators -> False")
+            return False
+        
+        # ====== Quark_Engine ======
+        # Real response: {"threat_level": "Low Risk", "total_score": 0, "crimes": []}
+        if analyzer_lower == "quark_engine":
+            threat_level = report_data.get("threat_level", "")
+            total_score = report_data.get("total_score", 0)
+            crimes = report_data.get("crimes", [])
+            
+            # Threat level indicators
+            high_risk_levels = ["High Risk", "Critical", "Malicious"]
+            if threat_level in high_risk_levels:
+                logger.debug(f"Quark_Engine threat_level = '{threat_level}' -> True")
+                return True
+            
+            # Score-based detection (score > 50 is concerning)
+            if isinstance(total_score, (int, float)) and total_score > 50:
+                logger.debug(f"Quark_Engine total_score = {total_score} > 50 -> True")
+                return True
+            
+            # Crimes detected
+            if isinstance(crimes, list) and len(crimes) > 0:
+                logger.debug(f"Quark_Engine crimes detected: {len(crimes)} -> True")
+                return True
+            
+            logger.debug(f"Quark_Engine threat_level={threat_level}, score={total_score} -> False")
+            return False
+        
+        # ====== APK_Artifacts ======
+        # Real response: {"permission": ["android.permission.INTERNET", "android.permission.READ_SMS"]}
+        if analyzer_lower == "apk_artifacts":
+            permissions = report_data.get("permission", [])
+            dangerous_permissions = [
+                "android.permission.READ_SMS",
+                "android.permission.SEND_SMS", 
+                "android.permission.RECEIVE_SMS",
+                "android.permission.READ_CONTACTS",
+                "android.permission.CALL_PHONE",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.CAMERA",
+                "android.permission.READ_CALL_LOG",
+                "android.permission.PROCESS_OUTGOING_CALLS"
+            ]
+            for perm in permissions:
+                if perm in dangerous_permissions:
+                    logger.debug(f"APK_Artifacts dangerous permission: {perm} -> True")
+                    return True
+            logger.debug(f"APK_Artifacts no dangerous permissions -> False")
+            return False
+        
+        # ====== APKiD ======
+        # Real response: {"files": [], "apkid_version": "..."}
+        # files contains packer/obfuscator detections
+        if analyzer_lower == "apkid":
+            files = report_data.get("files", [])
+            if isinstance(files, list) and len(files) > 0:
+                logger.debug(f"APKiD files detected: {files} -> True")
+                return True
+            logger.debug(f"APKiD no detections -> False")
+            return False
+        
+        # ====== Rtf_Info ======
+        # Real response: {"rtfobj": {"ole_objects": []}, "follina": []}
+        if analyzer_lower == "rtf_info":
+            rtfobj = report_data.get("rtfobj", {})
+            ole_objects = rtfobj.get("ole_objects", []) if isinstance(rtfobj, dict) else []
+            follina = report_data.get("follina", [])
+            
+            if isinstance(ole_objects, list) and len(ole_objects) > 0:
+                logger.debug(f"Rtf_Info OLE objects: {len(ole_objects)} -> True")
+                return True
+            if isinstance(follina, list) and len(follina) > 0:
+                logger.debug(f"Rtf_Info Follina exploit detected -> True")
+                return True
+            logger.debug(f"Rtf_Info no malicious content -> False")
+            return False
+        
+        # ====== BoxJS ======
+        # Real response: {"IOC.json": [...], "snippets.json": {...}}
+        if analyzer_lower == "boxjs":
+            ioc = report_data.get("IOC.json", [])
+            if isinstance(ioc, list) and len(ioc) > 0:
+                # Check for actual IOCs (not just sample name metadata)
+                for item in ioc:
+                    if isinstance(item, dict):
+                        ioc_type = item.get("type", "")
+                        if ioc_type not in ["Sample Name"]:  # Exclude non-threat IOCs
+                            logger.debug(f"BoxJS IOC detected: {ioc_type} -> True")
+                            return True
+            logger.debug(f"BoxJS no malicious IOCs -> False")
+            return False
+        
+        # ====== Strings_Info ======
+        # Real response: {"data": [...], "uris": []}
+        # Check for suspicious patterns in strings
+        if analyzer_lower == "strings_info":
+            data = report_data.get("data", [])
+            suspicious_patterns = [
+                "powershell", "cmd.exe", "wscript", "cscript",
+                "malicious", "exploit", "payload", "shellcode",
+                "c2-server", "command-and-control", "backdoor"
+            ]
+            for string in data:
+                string_lower = str(string).lower()
+                for pattern in suspicious_patterns:
+                    if pattern in string_lower:
+                        logger.debug(f"Strings_Info suspicious pattern '{pattern}' found -> True")
+                        return True
+            logger.debug(f"Strings_Info no suspicious patterns -> False")
+            return False
+        
+        # ====== File_Info ======
+        # Metadata only analyzer - cannot detect malware
+        if analyzer_lower == "file_info":
+            logger.debug(f"File_Info is metadata-only, cannot detect malware -> False")
+            return False
+        
+        # ====== Androguard ======
+        # Usually fails on non-APK files, but when it works:
+        if analyzer_lower == "androguard":
+            # Check status first
+            status = analyzer_report.get("status")
+            if status != "SUCCESS":
+                logger.debug(f"Androguard status={status} -> False")
+                return False
+            # Add specific field checks when you have sample output
+            logger.debug(f"Androguard no malware indicators -> False")
+            return False
+        
+        # ====== Generic fallback for unknown analyzers ======
+        # Check common malware indicator fields
+        detections = report_data.get("detections", [])
+        if isinstance(detections, list) and len(detections) > 0:
+            logger.debug(f"Generic detections found: {detections} -> True")
+            return True
+        
+        verdict = str(report_data.get("verdict", "")).lower()
+        if "malicious" in verdict or "malware" in verdict:
+            logger.debug(f"Generic verdict indicates malware -> True")
+            return True
+        
+        logger.debug(f"{analyzer_name} no malware indicators found -> False")
+        return False
+    
+    def _check_suspicious(self, analyzer_name: str, report_data: Dict[str, Any], analyzer_report: Dict[str, Any]) -> bool:
+        """
+        Check if analyzer found suspicious (but not definitively malicious) content.
+        
+        VERIFIED FIELD PATHS from actual responses:
+        - Doc_Info: mraptor = "suspicious"
+        - Quark_Engine: threat_level = "Medium Risk" or moderate score
+        - Yara: utility rule matches without malware rules
+        """
+        analyzer_lower = analyzer_name.lower() if analyzer_name else ""
+        
+        # Doc_Info suspicious macros
+        if analyzer_lower == "doc_info":
+            mraptor = report_data.get("mraptor", "")
+            if mraptor == "suspicious":
+                logger.debug(f"Doc_Info mraptor = 'suspicious' -> True")
+                return True
+        
+        # Quark_Engine medium risk
+        if analyzer_lower == "quark_engine":
+            threat_level = report_data.get("threat_level", "")
+            total_score = report_data.get("total_score", 0)
+            
+            if threat_level == "Medium Risk":
+                logger.debug(f"Quark_Engine threat_level = 'Medium Risk' -> True")
+                return True
+            
+            if isinstance(total_score, (int, float)) and 20 <= total_score <= 50:
+                logger.debug(f"Quark_Engine score {total_score} in suspicious range -> True")
+                return True
+        
+        # APK_Artifacts with some suspicious permissions
+        if analyzer_lower == "apk_artifacts":
+            permissions = report_data.get("permission", [])
+            suspicious_permissions = [
+                "android.permission.INTERNET",
+                "android.permission.ACCESS_NETWORK_STATE",
+                "android.permission.READ_PHONE_STATE"
+            ]
+            count = sum(1 for p in permissions if p in suspicious_permissions)
+            if count >= 2:  # Multiple suspicious but not dangerous permissions
+                logger.debug(f"APK_Artifacts {count} suspicious permissions -> True")
+                return True
+        
+        # Generic verdict check
+        verdict = str(report_data.get("verdict", "")).lower()
+        if "suspicious" in verdict:
+            logger.debug(f"Generic verdict suspicious -> True")
+            return True
+        
+        logger.debug(f"{analyzer_name} no suspicious indicators -> False")
+        return False
+    
+    def _check_clean(self, analyzer_name: str, report_data: Dict[str, Any], analyzer_report: Dict[str, Any]) -> bool:
+        """
+        Check if analyzer verified file as clean/safe.
+        
+        VERIFIED FIELD PATHS from actual responses:
+        - ClamAV: detections = [] and raw_report contains "Infected files: 0"
+        - Doc_Info: mraptor = "ok"
+        - Quark_Engine: threat_level = "Low Risk" and score = 0
+        """
+        analyzer_lower = analyzer_name.lower() if analyzer_name else ""
+        
+        # Check if analyzer succeeded first
+        status = analyzer_report.get("status")
+        if status != "SUCCESS":
+            logger.debug(f"{analyzer_name} status={status}, not clean -> False")
+            return False
+        
+        # ClamAV clean check
+        if analyzer_lower == "clamav":
+            detections = report_data.get("detections", [])
+            if not detections or (isinstance(detections, list) and len(detections) == 0):
+                raw_report = report_data.get("raw_report", "")
+                if "Infected files: 0" in raw_report or "FOUND" not in raw_report:
+                    logger.debug(f"ClamAV no detections, clean -> True")
+                    return True
+            logger.debug(f"ClamAV has detections -> False")
+            return False
+        
+        # Doc_Info clean check
+        if analyzer_lower == "doc_info":
+            mraptor = report_data.get("mraptor", "")
+            if mraptor == "ok":
+                logger.debug(f"Doc_Info mraptor = 'ok' -> True")
+                return True
+            logger.debug(f"Doc_Info mraptor = '{mraptor}' -> False")
+            return False
+        
+        # Quark_Engine clean check
+        if analyzer_lower == "quark_engine":
+            threat_level = report_data.get("threat_level", "")
+            total_score = report_data.get("total_score", 0)
+            crimes = report_data.get("crimes", [])
+            
+            if threat_level == "Low Risk" and total_score == 0 and not crimes:
+                logger.debug(f"Quark_Engine Low Risk, score=0, no crimes -> True")
+                return True
+            logger.debug(f"Quark_Engine not clean: level={threat_level}, score={total_score} -> False")
+            return False
+        
+        # Yara clean check - no matches in any rule set
+        if analyzer_lower == "yara":
+            # Check data_model first
+            job_data_model = analyzer_report.get("data_model", {})
+            if job_data_model.get("evaluation") == "malicious":
+                return False
+            
+            signatures = job_data_model.get("signatures", [])
+            if signatures:
+                return False
+            
+            # All rule sets should be empty for clean
+            for key, value in report_data.items():
+                if isinstance(value, list) and len(value) > 0:
+                    return False
+            
+            logger.debug(f"Yara no matches -> True")
+            return True
+        
+        # File_Info - always considered "clean" as it's metadata only
+        if analyzer_lower == "file_info":
+            logger.debug(f"File_Info metadata analyzer -> True")
+            return True
+        
+        # Strings_Info - clean if no suspicious patterns found
+        if analyzer_lower == "strings_info":
+            # Inverse of malicious check
+            if not self._check_malicious(analyzer_name, report_data, analyzer_report):
+                logger.debug(f"Strings_Info no suspicious patterns -> True")
+                return True
+            return False
+        
+        # Generic clean check
+        verdict = str(report_data.get("verdict", "")).lower()
+        if "clean" in verdict or "safe" in verdict or "benign" in verdict:
+            logger.debug(f"Generic verdict clean -> True")
+            return True
+        
+        # If no explicit clean indicator, assume clean if no malicious indicators
+        if not self._check_malicious(analyzer_name, report_data, analyzer_report):
+            logger.debug(f"{analyzer_name} no malicious indicators, assuming clean -> True")
+            return True
+        
+        logger.debug(f"{analyzer_name} not verified clean -> False")
+        return False
 
 # Global service instance
 intel_service = IntelOwlService()

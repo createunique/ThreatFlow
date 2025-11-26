@@ -92,7 +92,7 @@ export const ResultTabs: React.FC<ResultTabsProps> = ({ results }) => {
                 </Typography>
               ) : (
                 <Typography variant="caption" color="success.main">
-                  ✅ No malware detected
+                   No malware detected
                 </Typography>
               )}
             </Box>
@@ -181,7 +181,7 @@ export const ResultTabs: React.FC<ResultTabsProps> = ({ results }) => {
                 </Box>
               ) : (
                 <Typography variant="caption" color="success.main">
-                  ✅ No malware detected
+                   No malware detected
                 </Typography>
               )}
             </Box>
@@ -204,7 +204,7 @@ export const ResultTabs: React.FC<ResultTabsProps> = ({ results }) => {
                 </Box>
                 {positives === 0 ? (
                   <Typography variant="caption" color="success.main">
-                    ✅ File appears clean
+                     File appears clean
                   </Typography>
                 ) : (
                   <Typography variant="caption" color="error.main">

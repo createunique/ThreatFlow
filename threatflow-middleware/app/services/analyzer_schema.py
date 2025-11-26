@@ -60,95 +60,112 @@ class AnalyzerSchemaManager:
         'File_Info': {
             'description': 'Basic file metadata and signature analysis',
             'output_fields': [
+                # VERIFIED from actual response
                 SchemaField('report.md5', FieldType.STRING, 'MD5 hash', ['a1b2c3d4...']),
+                SchemaField('report.sha1', FieldType.STRING, 'SHA1 hash', []),
                 SchemaField('report.sha256', FieldType.STRING, 'SHA256 hash', ['e5f6g7h8...']),
-                SchemaField('report.mime_type', FieldType.STRING, 'MIME type', ['application/x-executable', 'application/pdf']),
-                SchemaField('report.size', FieldType.NUMBER, 'File size in bytes', [1024, 2048576]),
-                SchemaField('report.magic', FieldType.STRING, 'File type from magic bytes', ['PE32 executable', 'PDF document']),
+                SchemaField('report.tlsh', FieldType.STRING, 'TLSH hash', []),
                 SchemaField('report.ssdeep', FieldType.STRING, 'Fuzzy hash', ['3:ABC123:XYZ']),
+                SchemaField('report.magic', FieldType.STRING, 'File type from magic bytes', ['PE32 executable', 'PDF document', 'ASCII text']),
+                SchemaField('report.mimetype', FieldType.STRING, 'MIME type', ['application/x-executable', 'application/pdf', 'text/plain']),
+                SchemaField('report.filetype', FieldType.STRING, 'File type short name', ['PE', 'PDF', 'TXT']),
+                SchemaField('report.exiftool', FieldType.OBJECT, 'ExifTool metadata', []),
             ],
             'condition_templates': [
-                ConditionTemplate('Large file check', 'Detect files larger than threshold', 'field_greater_than', 
-                                'report.size', 10000000, 'Route large files to specialized analyzers'),
+                ConditionTemplate('File type check', 'Check specific file type', 'field_equals',
+                                'report.filetype', 'PE', 'Route PE files to PE analyzers'),
                 ConditionTemplate('Executable check', 'Check if file is executable', 'field_contains',
-                                'report.mime_type', 'executable', 'Apply PE analysis only to executables'),
+                                'report.mimetype', 'executable', 'Apply PE analysis only to executables'),
             ],
-            'malware_indicators': [],
-            'success_patterns': ['md5', 'sha256', 'mime_type'],
+            'malware_indicators': [],  # VERIFIED: metadata only, no malware detection
+            'success_patterns': ['md5', 'sha256', 'mimetype'],
         },
         
         'Strings_Info': {
             'description': 'Extract and analyze strings from binary files',
             'output_fields': [
-                SchemaField('report.strings', FieldType.ARRAY, 'Extracted ASCII strings', [['http://example.com', 'C:\\Windows\\System32']]),
-                SchemaField('report.urls', FieldType.ARRAY, 'Detected URLs', [['http://malicious.com', 'https://c2server.net']]),
-                SchemaField('report.ip_addresses', FieldType.ARRAY, 'Detected IP addresses', [['192.168.1.1', '10.0.0.1']]),
-                SchemaField('report.registry_keys', FieldType.ARRAY, 'Windows registry keys', [['HKEY_LOCAL_MACHINE\\Software\\...']]),
-                SchemaField('report.file_paths', FieldType.ARRAY, 'File system paths', [['C:\\Users\\Admin\\malware.exe']]),
+                # VERIFIED from actual response
+                SchemaField('report.data', FieldType.ARRAY, 'Extracted strings', []),
+                SchemaField('report.uris', FieldType.ARRAY, 'Detected URIs', []),
+                SchemaField('report.exceeded_max_number_of_strings', FieldType.BOOLEAN, 'String limit exceeded', [False]),
             ],
             'condition_templates': [
+                ConditionTemplate('Has strings', 'Check if strings were extracted', 'has_detections',
+                                use_case='Route based on string content availability'),
                 ConditionTemplate('Suspicious URL check', 'Check for malicious domains', 'field_contains',
-                                'report.urls', 'malicious', 'Flag files with known bad domains'),
-                ConditionTemplate('C2 IP detection', 'Detect command & control IPs', 'field_contains',
-                                'report.ip_addresses', None, 'Cross-reference with threat intel feeds'),
+                                'report.data', 'malicious', 'Flag files with suspicious patterns'),
             ],
-            'malware_indicators': ['urls', 'ip_addresses', 'registry_keys'],
-            'success_patterns': ['strings'],
+            'malware_indicators': ['data'],  # VERIFIED: check strings for patterns
+            'success_patterns': ['data'],
         },
         
         'Doc_Info': {
-            'description': 'Microsoft Office document analysis',
+            'description': 'Microsoft Office document analysis (OLE/VBA)',
             'output_fields': [
-                SchemaField('report.macros', FieldType.ARRAY, 'VBA macros found', [['AutoOpen', 'Document_Open']]),
-                SchemaField('report.ole_streams', FieldType.ARRAY, 'OLE streams', [['Macros/VBA/Module1']]),
-                SchemaField('report.suspicious_keywords', FieldType.ARRAY, 'Suspicious VBA keywords', [['Shell', 'CreateObject', 'WScript']]),
-                SchemaField('report.embedded_objects', FieldType.ARRAY, 'Embedded files/objects', [['oleObject1.bin']]),
+                # VERIFIED from actual response
+                SchemaField('report.mraptor', FieldType.STRING, 'Macro security rating', ['ok', 'suspicious']),
+                SchemaField('report.olevba', FieldType.OBJECT, 'VBA macro analysis', []),
+                SchemaField('report.msodde', FieldType.STRING, 'DDE link extraction', []),
+                SchemaField('report.uris', FieldType.ARRAY, 'Extracted URIs', []),
+                SchemaField('report.extracted_CVEs', FieldType.ARRAY, 'CVE references', []),
             ],
             'condition_templates': [
-                ConditionTemplate('Macro detection', 'Check for VBA macros', 'field_contains',
-                                'report.macros', 'AutoOpen', 'Route to sandbox if macros detected'),
-                ConditionTemplate('Suspicious keywords', 'Detect malicious VBA patterns', 'field_contains',
-                                'report.suspicious_keywords', 'Shell', 'Flag for manual review'),
+                ConditionTemplate('Suspicious macro', 'Check mraptor result', 'field_equals',
+                                'report.mraptor', 'suspicious', 'Flag documents with suspicious macros'),
+                ConditionTemplate('Clean document', 'Check mraptor is ok', 'field_equals',
+                                'report.mraptor', 'ok', 'Verified safe document'),
             ],
-            'malware_indicators': ['macros', 'suspicious_keywords', 'embedded_objects'],
-            'success_patterns': ['ole_streams'],
+            'malware_indicators': ['mraptor'],  # VERIFIED: "suspicious" indicates threat
+            'success_patterns': ['mraptor', 'olevba'],
         },
         
         # ========== Malware Detection Tools ==========
         'ClamAV': {
             'description': 'Open-source antivirus scanner',
             'output_fields': [
-                SchemaField('report.detections', FieldType.ARRAY, 'Malware detections', [['Win.Trojan.Generic-123', 'EICAR-Test-File']]),
-                SchemaField('report.raw_report', FieldType.STRING, 'Raw ClamAV output', ['Infected files: 1']),
-                SchemaField('report.verdict', FieldType.STRING, 'Scan verdict', ['malicious', 'clean']),
+                # VERIFIED from actual response
+                SchemaField('report.detections', FieldType.ARRAY, 'Malware detection names', [['Eicar-Signature', 'Unix.Tool.13409-1']]),
+                SchemaField('report.raw_report', FieldType.STRING, 'Raw ClamAV scan output', ['Infected files: 1\nEicar-Signature FOUND']),
             ],
             'condition_templates': [
                 ConditionTemplate('Malware detected', 'Check if ClamAV found threats', 'verdict_malicious',
                                 use_case='Trigger advanced analysis on infected files'),
                 ConditionTemplate('Clean file', 'Verify file is clean', 'verdict_clean',
                                 use_case='Skip resource-intensive analysis for clean files'),
+                ConditionTemplate('Has detections', 'Check if detections array is not empty', 'has_detections',
+                                use_case='Route based on any detection'),
             ],
-            'malware_indicators': ['detections'],
+            'malware_indicators': ['detections'],  # VERIFIED
             'success_patterns': ['detections', 'raw_report'],
         },
         
         'Yara': {
-            'description': 'Pattern matching for malware identification',
+            'description': 'Pattern matching for malware identification using multiple rule sets',
             'output_fields': [
-                SchemaField('report.matches', FieldType.ARRAY, 'Matched YARA rules', [
-                    [{'rule': 'Ransomware_Generic', 'strings': ['$crypt1', '$crypt2']}]
-                ]),
-                SchemaField('report.rules', FieldType.ARRAY, 'Rule names', [['Trojan_Emotet', 'APT_Lazarus']]),
-                SchemaField('report.meta', FieldType.OBJECT, 'Rule metadata', [{'author': 'researcher', 'date': '2024-01-01'}]),
+                # VERIFIED from actual response - multiple rule set fields
+                SchemaField('report.yara-rules_rules', FieldType.ARRAY, 'Yara-Rules community rules', []),
+                SchemaField('report.elastic_protections-artifacts', FieldType.ARRAY, 'Elastic security rules', []),
+                SchemaField('report.advanced-threat-research_yara-rules', FieldType.ARRAY, 'McAfee ATR rules', []),
+                SchemaField('report.neo23x0_signature-base', FieldType.ARRAY, 'Florian Roth signature base', []),
+                SchemaField('report.bartblaze_yara-rules', FieldType.ARRAY, 'Bartblaze rules', []),
+                SchemaField('report.intezer_yara-rules', FieldType.ARRAY, 'Intezer rules', []),
+                SchemaField('report.inquest_yara-rules', FieldType.ARRAY, 'InQuest rules', []),
+                SchemaField('report.reversinglabs_reversinglabs-yara-rules', FieldType.ARRAY, 'ReversingLabs rules', []),
+                # data_model fields from job level
+                SchemaField('data_model.evaluation', FieldType.STRING, 'Overall evaluation', ['malicious', 'clean']),
+                SchemaField('data_model.signatures', FieldType.ARRAY, 'Matched signatures', []),
             ],
             'condition_templates': [
                 ConditionTemplate('YARA rule match', 'Check if any rules matched', 'yara_rule_match',
                                 use_case='High-priority alert for rule matches'),
-                ConditionTemplate('Specific rule match', 'Check for specific rule', 'field_contains',
-                                'report.rules', 'Ransomware', 'Activate ransomware response protocol'),
+                ConditionTemplate('Specific rule match', 'Check for specific rule set', 'field_contains',
+                                'report.elastic_protections-artifacts', None, 'Elastic rule match'),
             ],
-            'malware_indicators': ['matches', 'rules'],
-            'success_patterns': ['matches'],
+            'malware_indicators': [
+                'yara-rules_rules', 'elastic_protections-artifacts',
+                'advanced-threat-research_yara-rules', 'neo23x0_signature-base'
+            ],  # VERIFIED
+            'success_patterns': ['yara-rules_rules'],
         },
         
         # ========== PE File Analyzers ==========
@@ -235,16 +252,18 @@ class AnalyzerSchemaManager:
         'Rtf_Info': {
             'description': 'Rich Text Format document analysis',
             'output_fields': [
-                SchemaField('report.ole_objects', FieldType.ARRAY, 'Embedded OLE objects', [['oleObject1']]),
-                SchemaField('report.exploits', FieldType.ARRAY, 'Detected exploit attempts', [['CVE-2017-11882']]),
-                SchemaField('report.urls', FieldType.ARRAY, 'Embedded URLs', [['http://exploit-kit.com']]),
+                # VERIFIED from actual response
+                SchemaField('report.rtfobj', FieldType.OBJECT, 'RTF object analysis', [{'ole_objects': []}]),
+                SchemaField('report.follina', FieldType.ARRAY, 'Follina exploit detection', []),
             ],
             'condition_templates': [
-                ConditionTemplate('Exploit detection', 'Check for known exploits', 'field_contains',
-                                'report.exploits', 'CVE', 'Immediate threat response'),
+                ConditionTemplate('OLE objects detected', 'Check for embedded OLE', 'has_detections',
+                                use_case='Route to OLE analysis'),
+                ConditionTemplate('Follina exploit', 'Check for CVE-2022-30190', 'field_contains',
+                                'report.follina', None, 'Immediate threat response'),
             ],
-            'malware_indicators': ['exploits', 'ole_objects'],
-            'success_patterns': ['ole_objects'],
+            'malware_indicators': ['rtfobj.ole_objects', 'follina'],  # VERIFIED
+            'success_patterns': ['rtfobj'],
         },
         
         'Xlm_Macro_Deobfuscator': {
@@ -282,51 +301,102 @@ class AnalyzerSchemaManager:
         },
         
         'BoxJS': {
-            'description': 'JavaScript deobfuscation and analysis',
+            'description': 'JavaScript deobfuscation and analysis sandbox',
             'output_fields': [
-                SchemaField('report.deobfuscated_code', FieldType.STRING, 'Deobfuscated JavaScript', ['var payload = ...']),
-                SchemaField('report.urls', FieldType.ARRAY, 'Extracted URLs', [['http://c2-server.com']]),
-                SchemaField('report.iocs', FieldType.ARRAY, 'Indicators of compromise', [['malicious_function()']]),
+                # VERIFIED from actual response
+                SchemaField('report.IOC.json', FieldType.ARRAY, 'Indicators of compromise', []),
+                SchemaField('report.snippets.json', FieldType.OBJECT, 'Deobfuscated code snippets', {}),
+                SchemaField('report.analysis.log', FieldType.ARRAY, 'Analysis log entries', []),
+                SchemaField('report.uris', FieldType.ARRAY, 'Extracted URIs', []),
+                # Note: urls.json, resources.json, active_urls.json may return FileNotFoundError
             ],
             'condition_templates': [
-                ConditionTemplate('IOC detection', 'Check for compromise indicators', 'field_contains',
-                                'report.iocs', None, 'Immediate threat alert'),
+                ConditionTemplate('IOC detection', 'Check for indicators of compromise', 'has_detections',
+                                use_case='Alert on detected IOCs'),
             ],
-            'malware_indicators': ['iocs', 'urls'],
-            'success_patterns': ['deobfuscated_code'],
+            'malware_indicators': ['IOC.json'],  # VERIFIED
+            'success_patterns': ['snippets.json', 'analysis.log'],
         },
         
         # ========== Mobile Analysis ==========
-        'APKiD': {
-            'description': 'Android APK identification',
+        'APK_Artifacts': {
+            'description': 'Android APK metadata and permission analysis',
             'output_fields': [
-                SchemaField('report.compiler', FieldType.STRING, 'DEX compiler', ['dx', 'dexlib']),
-                SchemaField('report.packer', FieldType.STRING, 'APK packer', ['UPX', 'Bangcle']),
-                SchemaField('report.obfuscator', FieldType.STRING, 'Code obfuscator', ['ProGuard', 'DexGuard']),
+                # VERIFIED from actual response
+                SchemaField('report.permission', FieldType.ARRAY, 'Requested permissions', [
+                    ['android.permission.INTERNET', 'android.permission.READ_SMS']
+                ]),
+                SchemaField('report.intent', FieldType.ARRAY, 'Intent filters', [
+                    ['android.intent.action.MAIN', 'android.intent.category.LAUNCHER']
+                ]),
+                SchemaField('report.application', FieldType.ARRAY, 'Application identifiers', [
+                    ['com.example.app']
+                ]),
             ],
             'condition_templates': [
-                ConditionTemplate('Packed APK', 'Check for APK packer', 'field_contains',
-                                'report.packer', None, 'Route to unpacker'),
+                ConditionTemplate('Dangerous permissions', 'Check for SMS/Contacts access', 'field_contains',
+                                'report.permission', 'READ_SMS', 'Flag privacy-invasive apps'),
+                ConditionTemplate('Has permissions', 'Check if any permissions requested', 'has_detections',
+                                use_case='Route based on permission count'),
             ],
-            'malware_indicators': ['packer', 'obfuscator'],
-            'success_patterns': ['compiler'],
+            'malware_indicators': ['permission'],  # VERIFIED: check for dangerous permissions
+            'success_patterns': ['permission', 'intent', 'application'],
+        },
+        
+        'Androguard': {
+            'description': 'Android APK reverse engineering analysis',
+            'output_fields': [
+                SchemaField('report.package', FieldType.STRING, 'Package name', []),
+                SchemaField('report.permissions', FieldType.ARRAY, 'Permissions list', []),
+                SchemaField('report.activities', FieldType.ARRAY, 'Activity components', []),
+                SchemaField('report.services', FieldType.ARRAY, 'Service components', []),
+                SchemaField('report.receivers', FieldType.ARRAY, 'Broadcast receivers', []),
+            ],
+            'condition_templates': [
+                ConditionTemplate('APK analysis success', 'Check if analysis succeeded', 'analyzer_success',
+                                use_case='Route based on valid APK'),
+            ],
+            'malware_indicators': [],  # Complex analysis, check specific fields
+            'success_patterns': ['package'],
+        },
+        
+        'APKiD': {
+            'description': 'Android APK compiler/packer identification',
+            'output_fields': [
+                # VERIFIED from actual response
+                SchemaField('report.files', FieldType.ARRAY, 'Detected packers/obfuscators', []),
+                SchemaField('report.rules_sha256', FieldType.STRING, 'Rules hash', []),
+                SchemaField('report.apkid_version', FieldType.STRING, 'APKiD version', ['2.1.4']),
+            ],
+            'condition_templates': [
+                ConditionTemplate('Packer detected', 'Check for APK packer', 'has_detections',
+                                use_case='Route to unpacker'),
+            ],
+            'malware_indicators': ['files'],  # VERIFIED: detections appear here
+            'success_patterns': ['apkid_version'],
         },
         
         'Quark_Engine': {
             'description': 'Android malware scoring engine',
             'output_fields': [
-                SchemaField('report.threat_score', FieldType.NUMBER, 'Malware threat score (0-100)', [85, 12]),
-                SchemaField('report.matched_rules', FieldType.ARRAY, 'Matched behavior rules', [['SMS_Trojan', 'Banking_Malware']]),
-                SchemaField('report.permissions', FieldType.ARRAY, 'Requested permissions', [['SEND_SMS', 'READ_CONTACTS']]),
+                # VERIFIED from actual response
+                SchemaField('report.threat_level', FieldType.STRING, 'Threat classification', ['Low Risk', 'Medium Risk', 'High Risk']),
+                SchemaField('report.total_score', FieldType.NUMBER, 'Malware threat score (0-100)', [0, 50, 100]),
+                SchemaField('report.crimes', FieldType.ARRAY, 'Detected malicious behaviors', []),
+                SchemaField('report.md5', FieldType.STRING, 'File MD5 hash', []),
+                SchemaField('report.size_bytes', FieldType.NUMBER, 'File size', []),
+                SchemaField('report.apk_filename', FieldType.STRING, 'APK filename', []),
             ],
             'condition_templates': [
-                ConditionTemplate('High threat score', 'Check threat level', 'field_greater_than',
-                                'report.threat_score', 70, 'Immediate threat response for high scores'),
-                ConditionTemplate('SMS trojan', 'Detect SMS malware', 'field_contains',
-                                'report.matched_rules', 'SMS_Trojan', 'Specialized SMS malware analysis'),
+                ConditionTemplate('High threat score', 'Check threat level', 'field_equals',
+                                'report.threat_level', 'High Risk', 'Immediate threat response'),
+                ConditionTemplate('Score threshold', 'Check if score exceeds threshold', 'field_greater_than',
+                                'report.total_score', 50, 'Medium-high risk threshold'),
+                ConditionTemplate('Low risk', 'Verify low threat level', 'field_equals',
+                                'report.threat_level', 'Low Risk', 'Safe APK routing'),
             ],
-            'malware_indicators': ['matched_rules', 'threat_score'],
-            'success_patterns': ['threat_score'],
+            'malware_indicators': ['threat_level', 'total_score', 'crimes'],  # VERIFIED
+            'success_patterns': ['threat_level', 'total_score'],
         },
         
         # ========== Additional File Analyzers ==========

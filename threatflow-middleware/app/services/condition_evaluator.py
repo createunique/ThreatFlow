@@ -2,6 +2,9 @@
 Enterprise Condition Evaluation Logic
 Separated for clarity and maintainability
 Contains all evaluation strategies (primary, schema fallback, generic fallback)
+
+UPDATED: Based on actual IntelOwl analyzer responses from comprehensive testing.
+Field paths are verified against real response data from testing_responses/responses/.
 """
 
 import logging
@@ -9,6 +12,24 @@ from typing import Dict, Any, Optional
 from app.services.analyzer_schema import schema_manager
 
 logger = logging.getLogger(__name__)
+
+
+# Actual malware indicator fields verified from real IntelOwl responses
+VERIFIED_MALWARE_INDICATORS = {
+    "ClamAV": ["detections"],  # Array of detection names
+    "Yara": [
+        "yara-rules_rules", "elastic_protections-artifacts", 
+        "advanced-threat-research_yara-rules", "neo23x0_signature-base"
+    ],  # Multiple rule set arrays
+    "Doc_Info": ["mraptor"],  # "suspicious" or "ok"
+    "Quark_Engine": ["threat_level", "total_score", "crimes"],
+    "APK_Artifacts": ["permission"],  # Dangerous permissions
+    "APKiD": ["files"],  # Detected packers/obfuscators
+    "Rtf_Info": ["rtfobj.ole_objects", "follina"],
+    "BoxJS": ["IOC.json"],
+    "Strings_Info": ["data"],  # Check for suspicious patterns
+    "File_Info": [],  # Metadata only, no malware detection
+}
 
 
 class ConditionEvaluatorMixin:
@@ -24,29 +45,62 @@ class ConditionEvaluatorMixin:
     ) -> bool:
         """
         Schema-based fallback evaluation
-        Uses analyzer schema to find alternative field patterns
+        Uses verified field paths from actual analyzer responses
         """
         cond_type = condition.get("type")
         analyzer_name = analyzer_report.get("name")
         report_data = analyzer_report.get("report", {})
         
-        # Get malware indicators from schema
-        malware_indicators = schema_manager.get_malware_indicators(analyzer_name)
+        # Use verified malware indicators first
+        if analyzer_name in VERIFIED_MALWARE_INDICATORS:
+            indicator_fields = VERIFIED_MALWARE_INDICATORS[analyzer_name]
+        else:
+            # Fall back to schema manager
+            indicator_fields = schema_manager.get_malware_indicators(analyzer_name)
         
         if cond_type == "verdict_malicious":
-            # Check schema-defined malware indicator fields
-            for indicator_field in malware_indicators:
+            # Check verified malware indicator fields
+            for indicator_field in indicator_fields:
                 value = self._navigate_field_path(report_data, indicator_field)
-                if value:
+                if value is not None:
+                    # ClamAV detections
+                    if indicator_field == "detections" and isinstance(value, list) and len(value) > 0:
+                        logger.debug(f"Schema fallback: detections has {len(value)} items -> True")
+                        return True
+                    
+                    # Doc_Info mraptor
+                    if indicator_field == "mraptor" and value == "suspicious":
+                        logger.debug(f"Schema fallback: mraptor = 'suspicious' -> True")
+                        return True
+                    
+                    # Quark threat_level
+                    if indicator_field == "threat_level" and value in ["High Risk", "Critical", "Malicious"]:
+                        logger.debug(f"Schema fallback: threat_level = '{value}' -> True")
+                        return True
+                    
+                    # Quark total_score
+                    if indicator_field == "total_score" and isinstance(value, (int, float)) and value > 50:
+                        logger.debug(f"Schema fallback: total_score = {value} > 50 -> True")
+                        return True
+                    
+                    # Array fields (crimes, files, etc.)
                     if isinstance(value, list) and len(value) > 0:
                         logger.debug(f"Schema fallback: {indicator_field} has items -> True")
                         return True
-                    elif isinstance(value, dict) and value:
+                    
+                    # Dict fields
+                    if isinstance(value, dict) and value:
                         logger.debug(f"Schema fallback: {indicator_field} has data -> True")
                         return True
-                    elif isinstance(value, str) and value:
-                        logger.debug(f"Schema fallback: {indicator_field} = '{value}' -> True")
-                        return True
+            
+            # Check Yara rule sets specifically
+            if analyzer_name == "Yara":
+                for key in report_data.keys():
+                    if "yara" in key.lower() or "rules" in key.lower():
+                        value = report_data.get(key, [])
+                        if isinstance(value, list) and len(value) > 0:
+                            logger.debug(f"Schema fallback: Yara {key} has matches -> True")
+                            return True
             
             logger.debug("Schema fallback: No malware indicators found -> False")
             return False
