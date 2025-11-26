@@ -130,6 +130,7 @@ export interface ExecuteWorkflowResponse {
   success: boolean;
   job_id?: number; // For backwards compatibility
   job_ids?: number[]; // For conditional workflows
+  results?: any; // For conditional workflows that return results immediately
   analyzers?: string[];
   total_stages?: number;
   executed_stages?: number[];

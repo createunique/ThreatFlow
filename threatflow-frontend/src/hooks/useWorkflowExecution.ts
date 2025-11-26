@@ -20,7 +20,7 @@ const distributeResultsToResultNodes = (
   edges: Edge[],
   updateNode: (id: string, data: any) => void
 ) => {
-  if (!allResults || !allResults.analyzer_reports) {
+  if (!allResults) {
     console.warn('No results to distribute');
     return;
   }
@@ -37,6 +37,7 @@ const distributeResultsToResultNodes = (
   console.log('Has conditionals:', hasConditionals);
   console.log('Stage routing:', stageRouting);
   console.log('Result nodes:', resultNodes.map(n => n.id));
+  console.log('All results structure:', Object.keys(allResults));
   console.log('=================================');
 
   // Clear all result nodes first to ensure clean state
@@ -52,6 +53,17 @@ const distributeResultsToResultNodes = (
   // If workflow has conditionals and routing metadata, use it
   if (hasConditionals && stageRouting && stageRouting.length > 0) {
     console.log('Using conditional routing metadata for result distribution');
+
+    // Collect all analyzer reports from all stages
+    const allAnalyzerReports: any[] = [];
+    Object.keys(allResults).forEach(stageKey => {
+      const stageData = allResults[stageKey];
+      if (stageData && stageData.analyzer_reports) {
+        allAnalyzerReports.push(...stageData.analyzer_reports);
+      }
+    });
+
+    console.log(`Collected ${allAnalyzerReports.length} analyzer reports from all stages`);
 
     // Create maps to track which result nodes should receive results and from which analyzers
     const resultNodeUpdates = new Map<string, { shouldUpdate: boolean, analyzers: string[], error?: string }>();
@@ -93,7 +105,7 @@ const distributeResultsToResultNodes = (
         // This node should receive results from specific analyzers
         const filteredResults = {
           ...allResults,
-          analyzer_reports: allResults.analyzer_reports.filter((report: any) =>
+          analyzer_reports: allAnalyzerReports.filter((report: any) =>
             updateInfo.analyzers.includes(report.name)
           )
         };
@@ -127,7 +139,7 @@ const distributeResultsToResultNodes = (
         if (connectedExecutedAnalyzers.length > 0) {
           const filteredResults = {
             ...allResults,
-            analyzer_reports: allResults.analyzer_reports.filter((report: any) =>
+            analyzer_reports: allAnalyzerReports.filter((report: any) =>
               connectedExecutedAnalyzers.includes(report.name)
             )
           };
@@ -158,13 +170,14 @@ const distributeResultsToResultNodes = (
     // Non-conditional workflow - distribute to all result nodes (original behavior)
     console.log('Using legacy result distribution (no conditionals)');
     
+    // For non-conditional workflows, results should be in the standard format
     resultNodes.forEach(resultNode => {
       const connectedAnalyzers = findConnectedAnalyzers(resultNode.id, nodes, edges);
       const filteredResults = {
         ...allResults,
-        analyzer_reports: allResults.analyzer_reports.filter((report: any) => 
+        analyzer_reports: allResults.analyzer_reports?.filter((report: any) => 
           connectedAnalyzers.includes(report.name)
-        )
+        ) || []
       };
 
       updateNode(resultNode.id, {
@@ -340,6 +353,35 @@ export const useWorkflowExecution = () => {
       );
 
       console.log('Workflow submitted:', response);
+      
+      // Handle conditional workflows differently - results are returned immediately
+      if (response.has_conditionals) {
+        console.log('Conditional workflow completed immediately');
+        setExecutionStatus('completed');
+        
+        // Store routing metadata from response
+        const workflowMetadata = {
+          has_conditionals: true,
+          stage_routing: response.stage_routing || []
+        };
+        
+        // Distribute results to appropriate result nodes based on workflow connections and routing
+        distributeResultsToResultNodes(
+          response.results, // Results are already in the response
+          workflowMetadata.stage_routing,
+          workflowMetadata.has_conditionals,
+          nodes,
+          edges,
+          updateNode
+        );
+        
+        // Set a dummy job ID for UI purposes
+        setJobId(response.job_ids?.[0] || 0);
+        
+        return { results: response.results };
+      }
+      
+      // Handle linear workflows - need to poll for results
       // Handle both single job_id (linear) and job_ids (conditional) responses
       const jobId = response.job_id || (response.job_ids && response.job_ids.length > 0 ? response.job_ids[0] : null);
       if (!jobId) {

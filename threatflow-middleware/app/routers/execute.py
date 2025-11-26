@@ -67,6 +67,7 @@ async def execute_workflow(
             return {
                 "success": True,
                 "job_ids": result["job_ids"],
+                "results": result["all_results"],  # Include the actual results for conditional workflows
                 "total_stages": len(stages),
                 "executed_stages": result["executed_stages"],
                 "skipped_stages": result["skipped_stages"],
