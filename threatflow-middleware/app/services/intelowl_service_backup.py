@@ -180,7 +180,7 @@ class IntelOwlService(ConditionEvaluatorMixin):
         tlp: str = "CLEAR"
     ) -> int:
         """
-        Submit file for analysis to IntelOwl using official pyintelowl SDK
+        Submit file for analysis to IntelOwl
         
         Args:
             file_path: Local path to file
@@ -196,19 +196,18 @@ class IntelOwlService(ConditionEvaluatorMixin):
             with open(file_path, "rb") as f:
                 file_binary = f.read()
             
-            # Use official pyintelowl SDK method
+            # Use real pyintelowl client to submit analysis
             result = self.client.send_file_analysis_request(
                 filename=file_name,
                 binary=file_binary,
                 analyzers_requested=analyzers,
                 tlp=tlp,
-                connectors_requested=[],
                 runtime_configuration={},
                 tags_labels=["threatflow"]
             )
             
             job_id = result["job_id"]
-            logger.info(f"Analysis submitted to IntelOwl: Job ID {job_id} for analyzers {analyzers}")
+            logger.info(f"Real analysis submitted to IntelOwl: Job ID {job_id} for analyzers {analyzers}")
             return job_id
             
         except IntelOwlClientException as e:
@@ -219,12 +218,12 @@ class IntelOwlService(ConditionEvaluatorMixin):
             raise
     
     async def get_job_status(self, job_id: int) -> Dict[str, Any]:
-        """Get current status of an IntelOwl job using official SDK"""
+        """Get current status of an IntelOwl job"""
         try:
-            # Use official pyintelowl SDK method
+            # Use real pyintelowl client to get job status
             job = self.client.get_job_by_id(job_id)
             
-            # Convert to expected format for middleware compatibility
+            # Convert to expected format
             status_dict = {
                 "job_id": job_id,
                 "status": job.get("status", "unknown"),
@@ -262,94 +261,6 @@ class IntelOwlService(ConditionEvaluatorMixin):
             await asyncio.sleep(poll_interval)
         
         raise TimeoutError(f"Job {job_id} did not complete within {timeout}s")
-    
-    async def ask_analysis_availability(self, md5: str, analyzers: Optional[List[str]] = None, minutes_ago: Optional[int] = None) -> Dict[str, Any]:
-        """
-        Check if analysis already exists using official pyintelowl SDK
-        
-        Args:
-            md5: MD5 hash of the file
-            analyzers: Optional list of analyzers to check
-            minutes_ago: Optional time limit for existing analysis
-        
-        Returns:
-            Dict with availability status
-        """
-        try:
-            result = self.client.ask_analysis_availability(
-                md5=md5,
-                analyzers=analyzers,
-                minutes_ago=minutes_ago
-            )
-            return result
-        except IntelOwlClientException as e:
-            logger.error(f"IntelOwl ask availability error: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"ask_analysis_availability unexpected error: {e}")
-            raise
-    
-    async def submit_file_to_playbook(self, file_path: str, playbook: str, file_name: str, tlp: str = "CLEAR", runtime_configuration: Optional[Dict] = None, tags: Optional[List[str]] = None) -> int:
-        """
-        Submit file to server-side Playbook using official pyintelowl SDK
-        
-        Args:
-            file_path: Local path to file
-            playbook: Name of the playbook to run
-            file_name: Original filename
-            tlp: Traffic Light Protocol
-            runtime_configuration: Optional runtime config
-            tags: Optional tags
-        
-        Returns:
-            job_id: IntelOwl job identifier
-        """
-        runtime_configuration = runtime_configuration or {}
-        tags = tags or []
-        
-        try:
-            with open(file_path, "rb") as f:
-                binary = f.read()
-            
-            result = self.client.send_file_analysis_playbook_request(
-                filename=file_name,
-                binary=binary,
-                playbook_requested=playbook,
-                tlp=tlp,
-                runtime_configuration=runtime_configuration,
-                tags_labels=tags
-            )
-            
-            job_id = result.get("job_id")
-            logger.info(f"Playbook analysis submitted: Job ID {job_id} for playbook {playbook}")
-            return job_id
-            
-        except IntelOwlClientException as e:
-            logger.error(f"IntelOwl playbook submit error: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during playbook submission: {e}")
-            raise
-    
-    async def download_sample_bytes(self, job_id: int) -> bytes:
-        """
-        Download sample bytes from a completed job using official pyintelowl SDK
-        
-        Args:
-            job_id: Job ID to download sample from
-        
-        Returns:
-            Raw bytes of the sample file
-        """
-        try:
-            sample_bytes = self.client.download_sample(job_id)
-            return sample_bytes
-        except IntelOwlClientException as e:
-            logger.error(f"IntelOwl download_sample error for job {job_id}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error downloading sample: {e}")
-            raise
     
     def _fetch_all_analyzers_via_django(self) -> List[Dict[str, Any]]:
         """

