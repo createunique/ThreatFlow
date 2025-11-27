@@ -88,7 +88,10 @@ class WorkflowParser:
         if not analyzers:
             raise ValueError("No analyzers connected to file node")
         
-        logger.info(f"Parsed linear workflow: {len(analyzers)} analyzers")
+        # Find all result nodes in the workflow
+        result_nodes = [node.id for node in nodes if node.type == NodeType.RESULT]
+        
+        logger.info(f"Parsed linear workflow: {len(analyzers)} analyzers, {len(result_nodes)} result nodes")
         
         return {
             "file_node_id": file_node.id,
@@ -99,7 +102,8 @@ class WorkflowParser:
                     "stage_id": 0,
                     "analyzers": analyzers,
                     "depends_on": None,
-                    "condition": None
+                    "condition": None,
+                    "target_nodes": result_nodes  # All analyzers route to all result nodes
                 }
             ]
         }

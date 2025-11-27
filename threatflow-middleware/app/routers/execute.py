@@ -13,6 +13,10 @@ import os
 router = APIRouter(prefix="/api", tags=["execution"])
 logger = logging.getLogger(__name__)
 
+# Global storage for workflow routing metadata
+# In production, this would be stored in a database
+_workflow_routing_store: Dict[int, List[Dict[str, Any]]] = {}
+
 @router.post("/execute")
 async def execute_workflow(
     workflow_json: str = Form(...),
@@ -53,26 +57,29 @@ async def execute_workflow(
             os.remove(temp_path)
             
             # Build routing metadata for frontend
-            stage_routing = []
+            stagerouting = []
             for stage in stages:
-                stage_routing.append({
+                stagerouting.append({
                     "stage_id": stage["stage_id"],
                     "target_nodes": stage.get("target_nodes", []),
                     "executed": stage["stage_id"] in result["executed_stages"],
                     "analyzers": stage.get("analyzers", [])
                 })
             
-            logger.info(f"Stage routing metadata: {stage_routing}")
+            # Store routing metadata for status polling
+            for job_id in result["job_ids"]:
+                _workflow_routing_store[job_id] = stagerouting
+            
+            logger.info(f"Stage routing metadata stored for jobs {result['job_ids']}: {stagerouting}")
             
             return {
                 "success": True,
                 "job_ids": result["job_ids"],
-                "results": result["all_results"],  # Include the actual results for conditional workflows
                 "total_stages": len(stages),
                 "executed_stages": result["executed_stages"],
                 "skipped_stages": result["skipped_stages"],
                 "has_conditionals": True,
-                "stage_routing": stage_routing,  # NEW: Include routing metadata
+                "stagerouting": stagerouting,  # NEW: Include routing metadata
                 "message": f"Conditional workflow executed: {result['total_stages_executed']} of {len(stages)} stages"
             }
         else:
@@ -91,12 +98,28 @@ async def execute_workflow(
             # Cleanup temp file
             os.remove(temp_path)
             
+            # For linear workflows, route all analyzers to all result nodes
+            result_nodes = [node.id for node in workflow.nodes if node.type == "result"]
+            
+            stagerouting = [{
+                "stage_id": 0,
+                "target_nodes": result_nodes,
+                "executed": True,
+                "analyzers": analyzers
+            }]
+            
+            # Store routing metadata for status polling
+            _workflow_routing_store[job_id] = stagerouting
+            
+            logger.info(f"Linear workflow stage routing stored for job {job_id}: {stagerouting}")
+            
             return {
                 "success": True,
                 "job_id": job_id,
                 "job_ids": [job_id],
                 "analyzers": analyzers,
                 "has_conditionals": False,
+                "stagerouting": stagerouting,  # Include routing metadata for frontend
                 "message": f"Analysis started with {len(analyzers)} analyzers"
             }
         
@@ -112,6 +135,12 @@ async def get_job_status(job_id: int):
     """Get current status of IntelOwl job"""
     try:
         status = await intel_service.get_job_status(job_id)
+        
+        # Include stored routing metadata if available
+        if job_id in _workflow_routing_store:
+            status["stagerouting"] = _workflow_routing_store[job_id]
+            logger.debug(f"Included stagerouting for job {job_id}: {status['stagerouting']}")
+        
         return JobStatusResponse(**status)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

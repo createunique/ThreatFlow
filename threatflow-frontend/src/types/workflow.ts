@@ -116,7 +116,7 @@ export interface JobStatusResponse {
   analyzers_total: number;
   results: any | null;
   has_conditionals?: boolean;
-  stage_routing?: StageRouting[];
+  stagerouting?: StageRouting[];
 }
 
 export interface StageRouting {
@@ -130,13 +130,12 @@ export interface ExecuteWorkflowResponse {
   success: boolean;
   job_id?: number; // For backwards compatibility
   job_ids?: number[]; // For conditional workflows
-  results?: any; // For conditional workflows that return results immediately
   analyzers?: string[];
   total_stages?: number;
   executed_stages?: number[];
   skipped_stages?: number[];
   has_conditionals?: boolean;
-  stage_routing?: StageRouting[]; // NEW: Routing metadata for conditional workflows
+  stagerouting?: StageRouting[]; // NEW: Routing metadata for conditional workflows
   message: string;
 }
 

@@ -59,6 +59,7 @@ class JobStatusResponse(BaseModel):
     analyzers_completed: int = 0
     analyzers_total: int = 0
     results: Optional[Dict[str, Any]] = None
+    stagerouting: Optional[List[Dict[str, Any]]] = None  # NEW: Routing metadata for tree-based distribution
 
 class AnalyzerInfo(BaseModel):
     """Analyzer metadata"""
