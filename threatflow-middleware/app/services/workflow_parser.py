@@ -128,17 +128,16 @@ class WorkflowParser:
         )
         
         if stage_0_analyzers:
-            # Find result nodes directly connected to these pre-conditional analyzers
-            stage_0_result_nodes = self._find_result_nodes_for_analyzers(
-                stage_0_analyzers, node_map, edges
-            )
+            # For pre-conditional stage, target ALL result nodes in the workflow
+            # since these analyzers provide baseline analysis for all branches
+            all_result_nodes = [node.id for node in node_map.values() if node.type == NodeType.RESULT]
             
             stages.append({
                 "stage_id": 0,
                 "analyzers": stage_0_analyzers,
                 "depends_on": None,
                 "condition": None,
-                "target_nodes": stage_0_result_nodes,
+                "target_nodes": all_result_nodes,  # ALL result nodes get pre-conditional analysis
                 "description": "Pre-conditional analysis"
             })
             # Mark these analyzers as processed
@@ -237,6 +236,12 @@ class WorkflowParser:
                 branch_result_nodes.extend(analyzer_result_nodes)
                 branch_result_nodes = list(set(branch_result_nodes))  # Remove duplicates
                 
+                # Fallback: if stage has analyzers but no target_nodes, target all result nodes
+                if branch_analyzers and not branch_result_nodes:
+                    all_result_nodes = [node.id for node in node_map.values() if node.type == NodeType.RESULT]
+                    branch_result_nodes = all_result_nodes
+                    logger.warning(f"Conditional branch with analyzers {branch_analyzers} has no target nodes, falling back to all result nodes")
+                
                 # Create stage for this branch if it has analyzers or result nodes
                 if branch_analyzers or branch_result_nodes:
                     stage = {
@@ -329,6 +334,12 @@ class WorkflowParser:
             )
             branch_result_nodes.extend(analyzer_result_nodes)
             branch_result_nodes = list(set(branch_result_nodes))  # Remove duplicates
+            
+            # Fallback: if stage has analyzers but no target_nodes, target all result nodes
+            if branch_analyzers and not branch_result_nodes:
+                all_result_nodes = [node.id for node in node_map.values() if node.type == NodeType.RESULT]
+                branch_result_nodes = all_result_nodes
+                logger.warning(f"Downstream conditional branch with analyzers {branch_analyzers} has no target nodes, falling back to all result nodes")
             
             # Create stage for this downstream branch
             if branch_analyzers or branch_result_nodes:
@@ -541,8 +552,9 @@ class WorkflowParser:
         node_map: Dict[str, WorkflowNode],
         edges: List[WorkflowEdge]
     ) -> List[str]:
-        """Find result nodes that are connected to the given analyzers"""
+        """Find result nodes that are reachable from the given analyzers (recursively)"""
         result_nodes = []
+        visited = set()
         
         # Create a map of analyzer names to node IDs
         analyzer_node_map = {}
@@ -552,20 +564,34 @@ class WorkflowParser:
                 if analyzer_name:
                     analyzer_node_map[analyzer_name] = node.id
         
-        # For each analyzer, find connected result nodes
+        def find_reachable_results(node_id: str):
+            """Recursively find all result nodes reachable from this node"""
+            if node_id in visited:
+                return
+            visited.add(node_id)
+            
+            node = node_map.get(node_id)
+            if not node:
+                return
+            
+            # If this is a result node, add it
+            if node.type == NodeType.RESULT:
+                if node_id not in result_nodes:
+                    result_nodes.append(node_id)
+                return
+            
+            # Continue to connected nodes (but don't go through conditionals backwards)
+            connected_edges = [e for e in edges if e.source == node_id]
+            for edge in connected_edges:
+                target_node = node_map.get(edge.target)
+                if target_node and target_node.type != NodeType.CONDITIONAL:
+                    find_reachable_results(edge.target)
+        
+        # For each analyzer, find all reachable result nodes
         for analyzer_name in analyzer_names:
             analyzer_node_id = analyzer_node_map.get(analyzer_name)
-            if not analyzer_node_id:
-                continue
-            
-            # Find edges from this analyzer node
-            analyzer_edges = [e for e in edges if e.source == analyzer_node_id]
-            
-            for edge in analyzer_edges:
-                target_node = node_map.get(edge.target)
-                if target_node and target_node.type == NodeType.RESULT:
-                    if edge.target not in result_nodes:
-                        result_nodes.append(edge.target)
+            if analyzer_node_id:
+                find_reachable_results(analyzer_node_id)
         
         return result_nodes
 
