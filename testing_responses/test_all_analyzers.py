@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive IntelOwl Analyzer Testing Script
-Tests all 18 analyzers on safe and malicious samples
+Tests all 21 analyzers on safe and malicious samples
 Collects and analyzes responses for different scenarios
 """
 
@@ -29,12 +29,13 @@ from app.config import settings
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Define the 18 analyzers to test
+# Define the 21 analyzers to test (added Floss, DetectItEasy, ELF_Info)
 ANALYZERS = [
     "File_Info", "ClamAV", "PE_Info", "Capa_Info", "Capa_Info_Shellcode",
     "Flare_Capa", "Yara", "Signature_Info", "Doc_Info", "PDF_Info",
     "Xlm_Macro_Deobfuscator", "Rtf_Info", "Strings_Info", "BoxJS",
-    "Androguard", "APKiD", "APK_Artifacts", "Quark_Engine"
+    "Androguard", "APKiD", "APK_Artifacts", "Quark_Engine",
+    "Floss", "DetectItEasy", "ELF_Info"  # Added these three new analyzers
 ]
 
 class AnalyzerTester:
@@ -154,6 +155,22 @@ class AnalyzerTester:
         # Yara on everything
         if analyzer == "Yara":
             return True
+
+        # NEW ANALYZERS:
+
+        # Floss: Advanced string extraction, works on PE files and binaries
+        # Note: Currently has mimetype restrictions, may not work with test files
+        if analyzer == "Floss":
+            return ext in ['.exe', '.dll'] or ext == '.apk'  # Try APK as octet-stream
+
+        # DetectItEasy: File type detection, works on ANY file type
+        if analyzer == "DetectItEasy":
+            return True  # Works on everything
+
+        # ELF_Info: ELF binary analysis, works on ELF executables/shared libs
+        # Note: Test files may not contain actual ELF binaries
+        if analyzer == "ELF_Info":
+            return ext in ['.exe', '.dll'] or 'elf' in name.lower() or 'bash' in name
 
         return False
 

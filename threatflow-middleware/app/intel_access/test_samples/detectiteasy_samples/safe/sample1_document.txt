@@ -1,0 +1,2 @@
+This is a sample text document for testing DetectItEasy file type detection.
+The tool should identify this as a plain text file.

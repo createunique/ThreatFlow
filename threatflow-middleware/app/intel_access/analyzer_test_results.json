@@ -1,0 +1,541 @@
+{
+  "timestamp": "2025-11-29 04:17:49",
+  "analyzers_tested": [
+    "Floss",
+    "DetectItEasy",
+    "ELF_Info"
+  ],
+  "test_files": {
+    "Floss": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/safe/sample1_simple_app.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/safe/sample2_webservice.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/safe/sample3_logger.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/suspicious/eicar_test.com",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/suspicious/sample2_commandline.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/floss_samples/suspicious/sample3_network.exe"
+    ],
+    "DetectItEasy": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/safe/sample1_document.txt",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/safe/sample2_archive.zip",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/safe/sample3_config.json",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/suspicious/sample1_eicar.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/suspicious/sample2_script.bat",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/detectiteasy_samples/suspicious/sample3_encoded.py"
+    ],
+    "ELF_Info": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/safe/sample1_hello_world",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/safe/sample2_library.so",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/safe/sample3_utility",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/suspicious/sample1_dropper",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/suspicious/sample2_rootkit.so",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples/elf_samples/suspicious/sample3_backdoor"
+    ]
+  },
+  "results": [
+    {
+      "analyzer": "Floss",
+      "file": "sample1_simple_app.exe",
+      "job_id": 254,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: FIXME - invalid homedir, playing along... ([Errno 13] Permission denied: '/root/.envi')\n\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Traceback (most recent call last) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 in <module>:818                                                              \u2502\n\u2502                                                                              \u2502\n\u2502 in main:720                                                                  \u2502\n\u2502                                                                          "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "Floss",
+      "file": "sample2_webservice.exe",
+      "job_id": 255,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: FIXME - invalid homedir, playing along... ([Errno 13] Permission denied: '/root/.envi')\n\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Traceback (most recent call last) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 in <module>:818                                                              \u2502\n\u2502                                                                              \u2502\n\u2502 in main:720                                                                  \u2502\n\u2502                                                                          "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "Floss",
+      "file": "sample3_logger.exe",
+      "job_id": 256,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: FIXME - invalid homedir, playing along... ([Errno 13] Permission denied: '/root/.envi')\n\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Traceback (most recent call last) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 in <module>:818                                                              \u2502\n\u2502                                                                              \u2502\n\u2502 in main:720                                                                  \u2502\n\u2502                                                                          "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "Floss",
+      "file": "eicar_test.com",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "Floss",
+      "file": "sample2_commandline.exe",
+      "job_id": 257,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: FIXME - invalid homedir, playing along... ([Errno 13] Permission denied: '/root/.envi')\n\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Traceback (most recent call last) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 in <module>:818                                                              \u2502\n\u2502                                                                              \u2502\n\u2502 in main:720                                                                  \u2502\n\u2502                                                                          "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "Floss",
+      "file": "sample3_network.exe",
+      "job_id": 258,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: FIXME - invalid homedir, playing along... ([Errno 13] Permission denied: '/root/.envi')\n\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 Traceback (most recent call last) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 in <module>:818                                                              \u2502\n\u2502                                                                              \u2502\n\u2502 in main:720                                                                  \u2502\n\u2502                                                                          "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample1_document.txt",
+      "job_id": 259,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "129",
+            "offset": "0",
+            "values": [
+              {
+                "info": "LF",
+                "name": "plain text",
+                "type": "Format",
+                "string": "Format: plain text[LF]",
+                "version": ""
+              }
+            ],
+            "filetype": "Binary",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample2_archive.zip",
+      "job_id": 260,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "408",
+            "offset": "0",
+            "values": [
+              {
+                "info": "",
+                "name": "Unknown",
+                "type": "Unknown",
+                "string": "Unknown: Unknown",
+                "version": ""
+              }
+            ],
+            "filetype": "ZIP",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample3_config.json",
+      "job_id": 261,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "215",
+            "offset": "0",
+            "values": [
+              {
+                "info": "LF",
+                "name": "plain text",
+                "type": "Format",
+                "string": "Format: plain text[LF]",
+                "version": ""
+              }
+            ],
+            "filetype": "Binary",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample1_eicar.exe",
+      "job_id": 262,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "683",
+            "offset": "0",
+            "values": [
+              {
+                "info": "",
+                "name": "Unknown",
+                "type": "Unknown",
+                "string": "Unknown: Unknown",
+                "version": ""
+              }
+            ],
+            "filetype": "PE32",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample2_script.bat",
+      "job_id": 263,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "228",
+            "offset": "0",
+            "values": [
+              {
+                "info": "LF",
+                "name": "plain text",
+                "type": "Format",
+                "string": "Format: plain text[LF]",
+                "version": ""
+              }
+            ],
+            "filetype": "Binary",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "DetectItEasy",
+      "file": "sample3_encoded.py",
+      "job_id": 264,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "detects": [
+          {
+            "info": "",
+            "size": "398",
+            "offset": "0",
+            "values": [
+              {
+                "info": "",
+                "name": "Python3",
+                "type": "Script",
+                "string": "Script: Python3",
+                "version": ""
+              },
+              {
+                "info": "LF",
+                "name": "plain text",
+                "type": "Format",
+                "string": "Format: plain text[LF]",
+                "version": ""
+              }
+            ],
+            "filetype": "Binary",
+            "parentfilepart": "Header"
+          }
+        ]
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample1_hello_world",
+      "job_id": 265,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_EXEC",
+          "e_entry": 4194304,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample2_library.so",
+      "job_id": 266,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_DYN",
+          "e_entry": 0,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample3_utility",
+      "job_id": 265,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_EXEC",
+          "e_entry": 4194304,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample1_dropper",
+      "job_id": 265,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_EXEC",
+          "e_entry": 4194304,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample2_rootkit.so",
+      "job_id": 266,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_DYN",
+          "e_entry": 0,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    },
+    {
+      "analyzer": "ELF_Info",
+      "file": "sample3_backdoor",
+      "job_id": 265,
+      "success": true,
+      "report_status": "SUCCESS",
+      "has_errors": false,
+      "report": {
+        "telf": {
+          "msg": "No symbols found",
+          "telfhash": "-"
+        },
+        "header": {
+          "e_type": "ET_EXEC",
+          "e_entry": 4194304,
+          "e_flags": 0,
+          "e_ident": {
+            "EI_MAG": [
+              127,
+              69,
+              76,
+              70
+            ],
+            "EI_DATA": "ELFDATA2LSB",
+            "EI_CLASS": "ELFCLASS64",
+            "EI_OSABI": "ELFOSABI_SYSV",
+            "EI_VERSION": "EV_CURRENT",
+            "EI_ABIVERSION": 0
+          },
+          "e_phnum": 1,
+          "e_phoff": 64,
+          "e_shnum": 3,
+          "e_shoff": 120,
+          "e_ehsize": 64,
+          "e_machine": "EM_X86_64",
+          "e_version": "EV_CURRENT",
+          "e_shstrndx": 2,
+          "e_phentsize": 56,
+          "e_shentsize": 64
+        },
+        "elfclass": 64,
+        "little_endian": true
+      }
+    }
+  ],
+  "summary": {
+    "total_tests": 18,
+    "successful_tests": 12,
+    "failed_tests": 6
+  }
+}

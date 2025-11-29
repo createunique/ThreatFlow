@@ -1,0 +1,123 @@
+{
+  "timestamp": "2025-11-29 05:04:42",
+  "analyzers_tested": [
+    "PEframe_Scan",
+    "Malpedia_Scan",
+    "OneNote_Info",
+    "GoReSym"
+  ],
+  "test_files": {
+    "PEframe_Scan": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/peframe_scan/safe/peframe_safe_app.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/peframe_scan/suspicious/peframe_susp_maldoc.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/peframe_scan/suspicious/sample_macro.doc"
+    ],
+    "Malpedia_Scan": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/malpedia_scan/safe/malpedia_legit_bundle.zip",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/malpedia_scan/suspicious/malpedia_emotet_like.exe",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/malpedia_scan/suspicious/malpedia_linus_backdoor"
+    ],
+    "OneNote_Info": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/onenote_info/safe/onenote_meeting.one",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/onenote_info/safe/onenote_docs.one",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/onenote_info/suspicious/onenote_macro_like.one"
+    ],
+    "GoReSym": [
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/gore_sym/safe/goserver_small",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/gore_sym/safe/gotool_small",
+      "/home/anonymous/COLLEGE/ThreatFlow/threatflow-middleware/app/intel_access/test_samples_small/medium_analyzers/gore_sym/suspicious/goc2_small"
+    ]
+  },
+  "results": [
+    {
+      "analyzer": "PEframe_Scan",
+      "file": "peframe_safe_app.exe",
+      "job_id": 268,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: Traceback (most recent call last):\n  File \"/opt/deploy/peframe/venv/bin/peframe\", line 8, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/opt/deploy/peframe/venv/lib/python3.11/site-packages/peframe/peframecli.py\", line 345, in main\n    result = peframe.analyze(filename)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deploy/peframe/venv/lib/python3.11/site-packages/peframe/peframe.py\", line 153, in analyze\n    \"features\": features.get_result(pe, filename),\n       "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "PEframe_Scan",
+      "file": "peframe_susp_maldoc.exe",
+      "job_id": 269,
+      "success": false,
+      "error": "Report status: FAILED",
+      "errors": [
+        "Report is empty. Reason: Traceback (most recent call last):\n  File \"/opt/deploy/peframe/venv/bin/peframe\", line 8, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/opt/deploy/peframe/venv/lib/python3.11/site-packages/peframe/peframecli.py\", line 345, in main\n    result = peframe.analyze(filename)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deploy/peframe/venv/lib/python3.11/site-packages/peframe/peframe.py\", line 153, in analyze\n    \"features\": features.get_result(pe, filename),\n       "
+      ],
+      "report": {}
+    },
+    {
+      "analyzer": "PEframe_Scan",
+      "file": "sample_macro.doc",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "Malpedia_Scan",
+      "file": "malpedia_legit_bundle.zip",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "Malpedia_Scan",
+      "file": "malpedia_emotet_like.exe",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "Malpedia_Scan",
+      "file": "malpedia_linus_backdoor",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "OneNote_Info",
+      "file": "onenote_meeting.one",
+      "job_id": 270,
+      "success": false,
+      "error": "Job 270 did not complete within 600 seconds"
+    },
+    {
+      "analyzer": "OneNote_Info",
+      "file": "onenote_docs.one",
+      "job_id": 271,
+      "success": false,
+      "error": "Job 271 did not complete within 600 seconds"
+    },
+    {
+      "analyzer": "OneNote_Info",
+      "file": "onenote_macro_like.one",
+      "job_id": 272,
+      "success": false,
+      "error": "Job 272 did not complete within 600 seconds"
+    },
+    {
+      "analyzer": "GoReSym",
+      "file": "goserver_small",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "GoReSym",
+      "file": "gotool_small",
+      "success": false,
+      "error": "Failed to submit job"
+    },
+    {
+      "analyzer": "GoReSym",
+      "file": "goc2_small",
+      "success": false,
+      "error": "Failed to submit job"
+    }
+  ],
+  "summary": {
+    "total_tests": 12,
+    "successful_tests": 0,
+    "failed_tests": 12
+  }
+}

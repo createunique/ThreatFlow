@@ -1,0 +1,12 @@
+{
+  "application": "TestApp",
+  "version": "1.0.0",
+  "server": {
+    "host": "localhost",
+    "port": 8080
+  },
+  "database": {
+    "type": "postgresql",
+    "connection": "postgresql://localhost:5432/testdb"
+  }
+}
