@@ -244,6 +244,13 @@ class WorkflowParser:
                 
                 # Create stage for this branch if it has analyzers or result nodes
                 if branch_analyzers or branch_result_nodes:
+                    branch_type_str = "TRUE" if is_true_branch else "FALSE"
+                    logger.info(
+                        f"📍 Building {branch_type_str} branch stage: "
+                        f"analyzers={branch_analyzers}, target_nodes={branch_result_nodes}, "
+                        f"condition={branch_condition.get('type', 'unknown')}"
+                    )
+                    
                     stage = {
                         "stage_id": -1,  # Will be reassigned
                         "analyzers": branch_analyzers,
@@ -343,6 +350,13 @@ class WorkflowParser:
             
             # Create stage for this downstream branch
             if branch_analyzers or branch_result_nodes:
+                branch_type_str = "TRUE" if is_true_branch else "FALSE"
+                logger.info(
+                    f"📍 Building chained {branch_type_str} branch stage: "
+                    f"analyzers={branch_analyzers}, target_nodes={branch_result_nodes}, "
+                    f"condition={branch_condition.get('type', 'unknown')}"
+                )
+                
                 stage = {
                     "stage_id": -1,  # Will be reassigned
                     "analyzers": branch_analyzers,
@@ -554,7 +568,6 @@ class WorkflowParser:
     ) -> List[str]:
         """Find result nodes that are reachable from the given analyzers (recursively)"""
         result_nodes = []
-        visited = set()
         
         # Create a map of analyzer names to node IDs
         analyzer_node_map = {}
@@ -564,36 +577,69 @@ class WorkflowParser:
                 if analyzer_name:
                     analyzer_node_map[analyzer_name] = node.id
         
-        def find_reachable_results(node_id: str):
-            """Recursively find all result nodes reachable from this node"""
-            if node_id in visited:
-                return
-            visited.add(node_id)
-            
-            node = node_map.get(node_id)
-            if not node:
-                return
-            
-            # If this is a result node, add it
-            if node.type == NodeType.RESULT:
-                if node_id not in result_nodes:
-                    result_nodes.append(node_id)
-                return
-            
-            # Continue to connected nodes (but don't go through conditionals backwards)
-            connected_edges = [e for e in edges if e.source == node_id]
-            for edge in connected_edges:
-                target_node = node_map.get(edge.target)
-                if target_node and target_node.type != NodeType.CONDITIONAL:
-                    find_reachable_results(edge.target)
-        
         # For each analyzer, find all reachable result nodes
         for analyzer_name in analyzer_names:
             analyzer_node_id = analyzer_node_map.get(analyzer_name)
             if analyzer_node_id:
-                find_reachable_results(analyzer_node_id)
+                reachable = self._find_all_reachable_result_nodes(
+                    analyzer_node_id, edges, node_map
+                )
+                result_nodes.extend(reachable)
         
-        return result_nodes
+        return list(set(result_nodes))  # Deduplicate
+    
+    def _find_all_reachable_result_nodes(
+        self,
+        start_node_id: str,
+        edges: List[WorkflowEdge],
+        node_map: Dict[str, WorkflowNode],
+        visited: Optional[Set[str]] = None
+    ) -> List[str]:
+        """
+        Recursively find ALL result nodes reachable from start_node_id.
+        
+        This method properly traverses through conditional nodes to find
+        downstream result nodes that are connected via conditional branches.
+        
+        Args:
+            start_node_id: Starting node ID for traversal
+            edges: List of workflow edges
+            node_map: Map of node IDs to nodes
+            visited: Set of already visited nodes (to prevent cycles)
+        
+        Returns:
+            List of result node IDs reachable from start_node_id
+        """
+        if visited is None:
+            visited = set()
+        
+        if start_node_id in visited:
+            return []
+        
+        visited.add(start_node_id)
+        current_node = node_map.get(start_node_id)
+        
+        if not current_node:
+            return []
+        
+        # Found a result node - return it
+        if current_node.type == NodeType.RESULT:
+            logger.debug(f"Found result node: {start_node_id}")
+            return [start_node_id]
+        
+        # Recurse through all outgoing edges
+        result_nodes = []
+        outgoing_edges = [e for e in edges if e.source == start_node_id]
+        
+        for edge in outgoing_edges:
+            # CRITICAL FIX: Continue traversal through ALL node types including conditionals
+            # Use a fresh copy of visited set for each branch to allow proper tree traversal
+            downstream_results = self._find_all_reachable_result_nodes(
+                edge.target, edges, node_map, visited.copy()
+            )
+            result_nodes.extend(downstream_results)
+        
+        return list(set(result_nodes))  # Deduplicate
 
 
 # Create singleton instance

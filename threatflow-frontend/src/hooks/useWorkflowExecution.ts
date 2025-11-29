@@ -99,11 +99,13 @@ const distributeResultsToResultNodes = (
     }
 
     // CORE ALGORITHM: Find ALL analyzers on paths from File to Result
+    // BUT only include analyzers from EXECUTED stages (conditional branches)
     const pathAnalyzers = findAllAnalyzersInPaths(
       fileNode.id,
       resultNode.id,
       nodes,
-      edges
+      edges,
+      stageRouting  // Pass stageRouting to filter by executed stages
     );
 
     if (pathAnalyzers.length === 0) {
@@ -168,11 +170,14 @@ const computeExecutedResultNodes = (
  * STRATEGY 2: DFS to find ALL analyzers on paths from root to leaf
  * 
  * Finds all unique analyzers across ALL paths from startNodeId to targetNodeId
+ * BUT only includes analyzers from stages that were actually EXECUTED
+ * (important for conditional workflows where some branches are skipped)
  * 
- * Algorithm: Depth-First Search with backtracking
+ * Algorithm: Depth-First Search with backtracking + execution filtering
  * - Explores all possible paths from root to target
  * - Collects analyzers encountered on each path
- * - Returns union of analyzers from all paths
+ * - Filters out analyzers from non-executed conditional branches
+ * - Returns union of analyzers from executed paths only
  * 
  * Time Complexity: O(V + E) where V = nodes, E = edges
  * Space Complexity: O(V) for visited set and path tracking
@@ -181,11 +186,23 @@ const findAllAnalyzersInPaths = (
   startNodeId: string,
   targetNodeId: string,
   nodes: CustomNode[],
-  edges: Edge[]
+  edges: Edge[],
+  stageRouting?: StageRouting[]  // Optional: filter by executed stages
 ): string[] => {
   const allPaths: string[][] = [];
   const visited = new Set<string>();
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  // Get executed analyzers from stage routing (for conditional workflows)
+  const executedAnalyzers = new Set<string>();
+  if (stageRouting) {
+    stageRouting.forEach(routing => {
+      if (routing.executed && routing.analyzers) {
+        routing.analyzers.forEach(analyzer => executedAnalyzers.add(analyzer));
+      }
+    });
+    console.log('[DFS] Executed analyzers from stages:', Array.from(executedAnalyzers));
+  }
 
   /**
    * DFS recursive traversal
@@ -206,7 +223,12 @@ const findAllAnalyzersInPaths = (
     if (currentNode.type === 'analyzer') {
       const analyzerName = (currentNode.data as any)?.analyzer;
       if (analyzerName) {
-        pathWithCurrent.push(analyzerName);
+        // For conditional workflows, only include analyzers from executed stages
+        if (!stageRouting || executedAnalyzers.has(analyzerName)) {
+          pathWithCurrent.push(analyzerName);
+        } else {
+          console.log(`[DFS] Skipping non-executed analyzer: ${analyzerName}`);
+        }
       }
     }
 
@@ -239,7 +261,8 @@ const findAllAnalyzersInPaths = (
   });
 
   console.log(
-    '[DFS] Found ' + allPaths.length + ' path(s) from ' + startNodeId + ' to ' + targetNodeId
+    '[DFS] Found ' + allPaths.length + ' path(s) from ' + startNodeId + ' to ' + targetNodeId +
+    ', analyzers: [' + Array.from(uniqueAnalyzers).join(', ') + ']'
   );
 
   return Array.from(uniqueAnalyzers);
