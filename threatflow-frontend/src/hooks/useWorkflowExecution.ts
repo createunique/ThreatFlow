@@ -142,6 +142,7 @@ const distributeResultsToResultNodes = (
 
 /**
  * STRATEGY 1: Compute which Result nodes executed
+ * For conditional workflows, only consider target_nodes from conditional stages (not initial stages)
  */
 const computeExecutedResultNodes = (
   stageRouting: StageRouting[] | undefined,
@@ -157,13 +158,22 @@ const computeExecutedResultNodes = (
   
   stageRouting.forEach(routing => {
     if (routing.executed && routing.target_nodes) {
-      routing.target_nodes.forEach(nodeId => {
-        executedNodes.add(nodeId);
-      });
+      // For conditional workflows, only consider stages with single target_nodes
+      // (conditional branches), not initial stages with all target_nodes
+      if (routing.target_nodes.length === 1) {
+        routing.target_nodes.forEach(nodeId => {
+          executedNodes.add(nodeId);
+        });
+        console.log(`[STRATEGY 1] Added result node ${routing.target_nodes[0]} from conditional stage ${routing.stage_id}`);
+      } else {
+        console.log(`[STRATEGY 1] Skipped stage ${routing.stage_id} with ${routing.target_nodes.length} target_nodes (likely initial stage)`);
+      }
     }
   });
 
-  return Array.from(executedNodes);
+  const result = Array.from(executedNodes);
+  console.log('[STRATEGY 1] Final executed result nodes:', result);
+  return result;
 };
 
 /**
@@ -266,6 +276,119 @@ const findAllAnalyzersInPaths = (
   );
 
   return Array.from(uniqueAnalyzers);
+};
+
+/**
+ * Update conditional nodes with their execution results (TRUE/FALSE)
+ * Uses the SAME logic as result nodes - checks which result nodes were executed
+ */
+const updateConditionalNodeResults = (
+  nodes: CustomNode[],
+  edges: Edge[],
+  stageRouting: StageRouting[],
+  updateNode: (id: string, data: any) => void
+) => {
+  // Use the SAME logic as result nodes to determine executed result nodes
+  const resultNodes = nodes.filter(n => n.type === 'result');
+  const executedResultNodes = computeExecutedResultNodes(
+    stageRouting,
+    resultNodes.map(n => n.id)
+  );
+  const executedResultNodeSet = new Set(executedResultNodes);
+
+  console.log('[CONDITIONAL] === CONDITIONAL NODE DEBUG ===');
+  console.log('[CONDITIONAL] All result nodes:', resultNodes.map(n => ({ id: n.id, type: n.type })));
+  console.log('[CONDITIONAL] Stage routing received:', JSON.stringify(stageRouting, null, 2));
+  console.log('[CONDITIONAL] Computed executed result nodes:', executedResultNodes);
+  console.log('[CONDITIONAL] Executed result node set:', Array.from(executedResultNodeSet));
+
+  const conditionalNodes = nodes.filter(n => n.type === 'conditional');
+  
+  conditionalNodes.forEach(conditionalNode => {
+    console.log(`[CONDITIONAL] === DEBUGGING CONDITIONAL ${conditionalNode.id} ===`);
+    
+    // Find the result nodes connected to TRUE and FALSE branches
+    let trueResultNode: string | null = null;
+    let falseResultNode: string | null = null;
+    
+    // Find TRUE branch result node
+    const trueEdge = edges.find(e => e.source === conditionalNode.id && e.sourceHandle === 'true-output');
+    console.log(`[CONDITIONAL] TRUE edge:`, trueEdge);
+    
+    if (trueEdge) {
+      // Follow the chain from the TRUE output to find the result node
+      let currentNodeId: string | null = trueEdge.target;
+      let steps = 0;
+      while (currentNodeId && steps < 10) { // Prevent infinite loops
+        const currentNode = nodes.find(n => n.id === currentNodeId);
+        console.log(`[CONDITIONAL] TRUE path step ${steps}: ${currentNodeId} (${currentNode?.type})`);
+        
+        if (currentNode?.type === 'result') {
+          trueResultNode = currentNodeId;
+          console.log(`[CONDITIONAL] ✅ Found TRUE result node: ${trueResultNode}`);
+          break;
+        }
+        // Find next node in chain
+        const nextEdge = edges.find(e => e.source === currentNodeId);
+        console.log(`[CONDITIONAL] Next edge from ${currentNodeId}:`, nextEdge);
+        currentNodeId = nextEdge?.target || null;
+        steps++;
+      }
+    }
+    
+    // Find FALSE branch result node
+    const falseEdge = edges.find(e => e.source === conditionalNode.id && e.sourceHandle === 'false-output');
+    console.log(`[CONDITIONAL] FALSE edge:`, falseEdge);
+    
+    if (falseEdge) {
+      // Follow the chain from the FALSE output to find the result node
+      let currentNodeId: string | null = falseEdge.target;
+      let steps = 0;
+      while (currentNodeId && steps < 10) { // Prevent infinite loops
+        const currentNode = nodes.find(n => n.id === currentNodeId);
+        console.log(`[CONDITIONAL] FALSE path step ${steps}: ${currentNodeId} (${currentNode?.type})`);
+        
+        if (currentNode?.type === 'result') {
+          falseResultNode = currentNodeId;
+          console.log(`[CONDITIONAL] ✅ Found FALSE result node: ${falseResultNode}`);
+          break;
+        }
+        // Find next node in chain
+        const nextEdge = edges.find(e => e.source === currentNodeId);
+        console.log(`[CONDITIONAL] Next edge from ${currentNodeId}:`, nextEdge);
+        currentNodeId = nextEdge?.target || null;
+        steps++;
+      }
+    }
+    
+    console.log(`[CONDITIONAL] SUMMARY for ${conditionalNode.id}:`);
+    console.log(`  TRUE result node: ${trueResultNode}`);
+    console.log(`  FALSE result node: ${falseResultNode}`);
+    console.log(`  TRUE in executed set: ${trueResultNode && executedResultNodeSet.has(trueResultNode)}`);
+    console.log(`  FALSE in executed set: ${falseResultNode && executedResultNodeSet.has(falseResultNode)}`);
+    console.log(`  Executed result nodes: [${Array.from(executedResultNodeSet).join(', ')}]`);
+    
+    // Use the SAME executed result node logic as result nodes
+    let executionResult: boolean | null = null;
+    if (trueResultNode && executedResultNodeSet.has(trueResultNode)) {
+      executionResult = true; // TRUE branch executed (same check as result nodes)
+      console.log(`[CONDITIONAL] 🎯 RESULT: TRUE (because ${trueResultNode} was executed)`);
+    } else if (falseResultNode && executedResultNodeSet.has(falseResultNode)) {
+      executionResult = false; // FALSE branch executed (same check as result nodes)
+      console.log(`[CONDITIONAL] 🎯 RESULT: FALSE (because ${falseResultNode} was executed)`);
+    } else {
+      console.warn(`[CONDITIONAL] ❌ Could not determine execution result for ${conditionalNode.id}`);
+      console.log(`[CONDITIONAL] Available executed nodes:`, Array.from(executedResultNodeSet));
+      executionResult = null;
+    }
+    
+    // Update the conditional node with execution result
+    updateNode(conditionalNode.id, {
+      executionResult
+    });
+    
+    console.log(`[CONDITIONAL] === FINAL: ${conditionalNode.id} = ${executionResult} ===`);
+  });
 };
 
 /**
@@ -429,6 +552,11 @@ export const useWorkflowExecution = () => {
         edges,
         updateNode
       );
+
+      // Update conditional nodes with execution results
+      if (hasConditionals && finalStatus.stagerouting) {
+        updateConditionalNodeResults(nodes, edges, finalStatus.stagerouting, updateNode);
+      }
       
       return finalStatus;
     } catch (err: any) {

@@ -60,6 +60,7 @@ export interface ConditionalNodeData {
   fieldPath?: string;               // e.g., "report.pe_info.signature.valid"
   expectedValue?: any;              // Value to compare against
   operator?: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'regex';
+  executionResult?: boolean | null; // null = not executed, true = condition met, false = condition not met
 }
 
 // Union type for all node data

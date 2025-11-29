@@ -59,19 +59,81 @@ export const ConditionalNode = memo(({ data, selected }: NodeProps<ConditionalNo
     }
   };
 
+  // Determine styling based on execution result
+  const getExecutionStyling = () => {
+    if (data.executionResult === null || data.executionResult === undefined) {
+      // Not executed yet - default styling
+      return {
+        borderColor: selected ? '#ff5722' : '#ff9800',
+        background: '#fff3e0',
+        boxShadow: selected ? '0 4px 12px rgba(255,152,0,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+        resultIcon: null,
+        resultLabel: null
+      };
+    } else if (data.executionResult === true) {
+      // Condition evaluated to TRUE
+      return {
+        borderColor: '#4caf50',
+        background: 'linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%)',
+        boxShadow: selected ? '0 4px 12px rgba(76,175,80,0.4)' : '0 2px 8px rgba(76,175,80,0.2)',
+        resultIcon: '✅',
+        resultLabel: 'TRUE'
+      };
+    } else {
+      // Condition evaluated to FALSE
+      return {
+        borderColor: '#f44336',
+        background: 'linear-gradient(135deg, #ffebee 0%, #fce4ec 100%)',
+        boxShadow: selected ? '0 4px 12px rgba(244,67,54,0.4)' : '0 2px 8px rgba(244,67,54,0.2)',
+        resultIcon: '❌',
+        resultLabel: 'FALSE'
+      };
+    }
+  };
+
+  const executionStyle = getExecutionStyling();
+
   return (
     <div 
-      className={`conditional-node ${selected ? 'selected' : ''}`}
+      className={`conditional-node ${selected ? 'selected' : ''} ${data.executionResult !== null && data.executionResult !== undefined ? 'executed' : ''}`}
       style={{
         padding: '15px 20px',
-        border: `2px solid ${selected ? '#ff5722' : '#ff9800'}`,
-        borderRadius: '8px',
-        background: '#fff3e0',
-        minWidth: '180px',
+        border: `4px solid ${executionStyle.borderColor}`,
+        borderRadius: '12px',
+        background: executionStyle.background,
+        minWidth: '200px',
         position: 'relative',
-        boxShadow: selected ? '0 4px 12px rgba(255,152,0,0.3)' : '0 2px 4px rgba(0,0,0,0.1)'
+        boxShadow: executionStyle.boxShadow,
+        transition: 'all 0.4s ease',
+        transform: data.executionResult !== null && data.executionResult !== undefined ? 'scale(1.05)' : 'scale(1)'
       }}
     >
+      {/* LARGE EXECUTION RESULT BADGE - TOP CENTER */}
+      {executionStyle.resultIcon && (
+        <div style={{
+          position: 'absolute',
+          top: '-15px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: executionStyle.borderColor,
+          color: 'white',
+          borderRadius: '20px',
+          padding: '6px 12px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          minWidth: '80px',
+          justifyContent: 'center'
+        }}>
+          <span style={{ fontSize: '16px' }}>{executionStyle.resultIcon}</span>
+          <span>{executionStyle.resultLabel}</span>
+        </div>
+      )}
+
       {/* Input handle (left side) */}
       <Handle 
         type="target" 
@@ -79,43 +141,45 @@ export const ConditionalNode = memo(({ data, selected }: NodeProps<ConditionalNo
         id="input"
         style={{ 
           background: '#666',
-          width: '12px',
-          height: '12px'
+          width: '14px',
+          height: '14px'
         }}
       />
       
       {/* Node content */}
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: 'center', marginTop: executionStyle.resultIcon ? '15px' : '0' }}>
         <div style={{ 
-          fontSize: '20px',
-          marginBottom: '4px'
+          fontSize: '22px',
+          marginBottom: '6px'
         }}>
           {getConditionIcon(data.conditionType)}
         </div>
         <div style={{ 
           fontWeight: 'bold', 
-          fontSize: '12px',
-          marginBottom: '4px',
-          color: '#e65100'
+          fontSize: '13px',
+          marginBottom: '6px',
+          color: data.executionResult !== null && data.executionResult !== undefined ? 
+            (data.executionResult ? '#2e7d32' : '#c62828') : '#e65100'
         }}>
           {getConditionLabel(data.conditionType)}
         </div>
+        
         {data.sourceAnalyzer && (
           <div style={{ 
-            fontSize: '10px', 
+            fontSize: '11px', 
             color: '#666',
             fontStyle: 'italic',
-            marginBottom: '2px'
+            marginBottom: '4px'
           }}>
             from: {data.sourceAnalyzer}
           </div>
         )}
         {data.fieldPath && (
           <div style={{ 
-            fontSize: '9px', 
+            fontSize: '10px', 
             color: '#888',
             fontFamily: 'monospace',
-            maxWidth: '140px',
+            maxWidth: '160px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
@@ -125,10 +189,10 @@ export const ConditionalNode = memo(({ data, selected }: NodeProps<ConditionalNo
         )}
         {data.expectedValue !== undefined && (
           <div style={{ 
-            fontSize: '9px', 
+            fontSize: '10px', 
             color: '#888',
             fontFamily: 'monospace',
-            maxWidth: '140px',
+            maxWidth: '160px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
@@ -144,10 +208,12 @@ export const ConditionalNode = memo(({ data, selected }: NodeProps<ConditionalNo
         position={Position.Right}
         id="true-output"
         style={{ 
-          background: '#4caf50',
-          width: '12px',
-          height: '12px',
-          top: '30%'
+          background: data.executionResult === true ? '#4caf50' : '#4caf50',
+          width: data.executionResult === true ? '18px' : '14px',
+          height: data.executionResult === true ? '18px' : '14px',
+          top: '30%',
+          border: data.executionResult === true ? '3px solid #fff' : 'none',
+          boxShadow: data.executionResult === true ? '0 0 12px rgba(76,175,80,0.8)' : 'none'
         }}
       />
       
@@ -157,36 +223,48 @@ export const ConditionalNode = memo(({ data, selected }: NodeProps<ConditionalNo
         position={Position.Right}
         id="false-output"
         style={{ 
-          background: '#f44336',
-          width: '12px',
-          height: '12px',
-          top: '70%'
+          background: data.executionResult === false ? '#f44336' : '#f44336',
+          width: data.executionResult === false ? '18px' : '14px',
+          height: data.executionResult === false ? '18px' : '14px',
+          top: '70%',
+          border: data.executionResult === false ? '3px solid #fff' : 'none',
+          boxShadow: data.executionResult === false ? '0 0 12px rgba(244,67,54,0.8)' : 'none'
         }}
       />
       
-      {/* Branch labels */}
+      {/* Branch labels with execution highlighting */}
       <div style={{
         position: 'absolute',
-        right: '-50px',
-        top: 'calc(30% - 10px)',
-        fontSize: '11px',
-        color: '#4caf50',
-        fontWeight: 'bold',
-        pointerEvents: 'none'
+        right: '-55px',
+        top: 'calc(30% - 12px)',
+        fontSize: '12px',
+        color: data.executionResult === true ? '#4caf50' : '#4caf50',
+        fontWeight: data.executionResult === true ? 'bold' : 'normal',
+        pointerEvents: 'none',
+        textShadow: data.executionResult === true ? '0 0 6px rgba(76,175,80,0.7)' : 'none',
+        background: data.executionResult === true ? 'rgba(76,175,80,0.1)' : 'transparent',
+        padding: '2px 6px',
+        borderRadius: '8px',
+        border: data.executionResult === true ? '2px solid #4caf50' : 'none'
       }}>
-        ✓ True
+        ✓ TRUE
       </div>
       
       <div style={{
         position: 'absolute',
-        right: '-50px',
-        top: 'calc(70% - 10px)',
-        fontSize: '11px',
-        color: '#f44336',
-        fontWeight: 'bold',
-        pointerEvents: 'none'
+        right: '-55px',
+        top: 'calc(70% - 12px)',
+        fontSize: '12px',
+        color: data.executionResult === false ? '#f44336' : '#f44336',
+        fontWeight: data.executionResult === false ? 'bold' : 'normal',
+        pointerEvents: 'none',
+        textShadow: data.executionResult === false ? '0 0 6px rgba(244,67,54,0.7)' : 'none',
+        background: data.executionResult === false ? 'rgba(244,67,54,0.1)' : 'transparent',
+        padding: '2px 6px',
+        borderRadius: '8px',
+        border: data.executionResult === false ? '2px solid #f44336' : 'none'
       }}>
-        ✗ False
+        ✗ FALSE
       </div>
     </div>
   );
