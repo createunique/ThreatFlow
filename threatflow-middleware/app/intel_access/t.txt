@@ -2504,3 +2504,65 @@ Perfect! The analyzer control script is now working correctly. Let me provide a 
 The system now provides complete programmatic control over IntelOwl analyzers, replacing manual GUI operations with automated API-based management. This enables efficient analyzer lifecycle management and reliable testing workflows.
 
 Made changes.
+
+
+
+
+
+
+
+ClamAV v1.0: verdict = result.verdict_malicious (boolean)
+ClamAV v2.0: verdict = result.detections[0].malware_found (string)
+YARA v4.5:  matches = result.rules.matches (array)  
+YARA v4.6:  matches = result.yara.hits (object)
+
+
+
+def evaluate_condition(result, condition_config):
+    # Level 1: Direct access
+    if condition_config.primary_field in result:
+        return result[condition_config.primary_field]
+    
+    # Level 2: Schema fallback
+    if schema_fallback := get_schema_mapping(condition_config.analyzer):
+        return get_by_path(result, schema_fallback)
+    
+    # Level 3: Pattern matching
+    for pattern in GENERIC_PATTERNS:
+        if pattern(result):
+            return True
+    
+    # Level 4: Safe default
+    logger.warning(f"Level 4 fallback for {condition_config}")
+    return False  # Conservative: assume clean
+
+
+
+
+
+
+
+
+1. ClamAV              - AV signatures (all files)
+2. YARA                - Custom rules (all binaries)
+3. PE_Info             - Windows EXE/DLL headers
+4. APKiD               - Android APK packers
+5. APK_Artifacts       - APK permissions/activities
+6. Doc_Info            - Office docs/macros
+7. File_Type           - File identification
+8. Strings_Info        - Printable strings
+9. FLOSS               - Deobfuscated strings
+10. ELF_Info           - Linux ELF analysis
+11. PEframe_Scan       - PE + Office static
+12. Permhash           - Android permissions hash
+13. CAPA                - PE behavioral capabilities
+14. Hashlookup         - Known malware hashes
+15. MalwareBazaar      - Malware sample database
+16. VirusTotal_File    - VT file reputation
+17. Intezer_Hash       - Genetic code analysis
+18. Cuckoo_Scan        - Dynamic sandbox (optional)
+
+
+ThreatFlow Analyzer Strategy: Triage-First → Conditional Deep Dive
+
+
