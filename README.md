@@ -5,49 +5,48 @@
 [![React](https://img.shields.io/badge/react-18+-blue.svg)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/docker-required-blue.svg)](https://www.docker.com/)
 
-ThreatFlow is a comprehensive visual malware analysis platform that integrates IntelOwl's powerful analysis capabilities through an intuitive drag-and-drop workflow builder. Built in three phases, it provides SOC analysts and security researchers with a modern interface for automated threat intelligence gathering.
+ThreatFlow is a comprehensive visual malware analysis platform that integrates IntelOwl's powerful analysis capabilities through an intuitive drag-and-drop workflow builder. Developed across four phases, it provides SOC analysts and security researchers with a modern interface for automated threat intelligence gathering.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
+```mermaid
+graph TD
+    A[React Frontend<br/>Port 3000] --> B[FastAPI Middleware<br/>Port 8030]
+    B --> C[IntelOwl Backend<br/>Port 80]
+    
+    A --> D[Visual Canvas<br/>Drag & Drop<br/>Real-time UI]
+    B --> E[API Orchestration<br/>Workflow Parser<br/>Job Monitoring]
+    C --> F[200+ Analyzers<br/>Docker Engine<br/>PostgreSQL]
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  React Frontend │    │ FastAPI Middleware│    │ IntelOwl Backend│
-│   (Port 3000)   │◄──►│    (Port 8030)    │◄──►│   (Port 80)     │
-│                 │    │                   │    │                 │
-│ • Visual Canvas │    │ • API Orchestration│    │ • 200+ Analyzers│
-│ • Drag & Drop   │    │ • Workflow Parser  │    │ • Docker Engine │
-│ • Real-time UI  │    │ • Job Monitoring   │    │ • PostgreSQL    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
 
-## 📋 Project Phases
+## Project Phases
 
-### Phase 1: IntelOwl Backend Integration ✅
-**Core malware analysis engine with 200+ integrated analyzers**
+### Phase 1: IntelOwl Backend Integration (Completed)
+Core malware analysis engine with 200+ integrated analyzers
 - File analyzers: File_Info, ClamAV, VirusTotal, YARA, PEiD, APKiD, Androguard
 - Observable analyzers: DNS, IP reputation, domain analysis, AbuseIPDB
 - Docker-based analyzer isolation
 - REST API for analysis requests
 - Web-based management interface
 
-### Phase 2: FastAPI Middleware ✅
-**API orchestration layer between frontend and analysis backend**
+### Phase 2: FastAPI Middleware (Completed)
+API orchestration layer between frontend and analysis backend
 - Translates React Flow workflows to IntelOwl analysis requests
 - Unified REST API for frontend consumption
 - File upload handling and job status monitoring
 - Authentication and error management
 - Health checks and analyzer discovery
 
-### Phase 3: React Frontend ✅
-**Visual drag-and-drop interface for building analysis workflows**
+### Phase 3: React Frontend (Completed)
+Visual drag-and-drop interface for building analysis workflows
 - React Flow-based canvas for workflow creation
 - Custom nodes: File Upload, Analyzer Selection, Result Display
 - Real-time job execution monitoring
 - Professional Material-UI interface
 - TypeScript for type safety
 
-### Phase 4: Conditional Logic ✅ **NEW!**
-**Dynamic workflow branching based on analysis results**
+### Phase 4: Conditional Logic (Completed) - New Feature
+Dynamic workflow branching based on analysis results
 - Conditional nodes with if/then/else logic
 - 6 condition types: malicious, suspicious, clean, success, failed, custom field
 - Multi-stage workflow execution with automatic stage skipping
@@ -55,27 +54,27 @@ ThreatFlow is a comprehensive visual malware analysis platform that integrates I
 - Backwards compatible with linear workflows
 - Sequential execution with dependency tracking
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
-- **Docker & Docker Compose** (for IntelOwl)
-- **Python 3.12+** (for middleware)
-- **Node.js 16+** (for frontend)
-- **Git** (for cloning repositories)
-- **4GB+ RAM** (recommended for Docker containers)
+- Docker & Docker Compose (for IntelOwl)
+- Python 3.12+ (for middleware)
+- Node.js 16+ (for frontend)
+- Git (for cloning repositories)
+- 4GB+ RAM (recommended for Docker containers)
 
-**Note:** IntelOwl uses Docker Compose V2 syntax (`docker compose` without hyphen) via their custom `start` script. If you have Docker Compose V1, the script will handle it automatically.
+Note: IntelOwl uses Docker Compose V2 syntax (docker compose without hyphen) via their custom start script. If you have Docker Compose V1, the script will handle it automatically.
 
 ### IntelOwl Startup Options
 
 IntelOwl provides different startup commands depending on your needs:
 
-- **Basic startup:** `./start prod up` (minimal configuration)
-- **With malware analyzers:** `./start prod up --malware_tools_analyzers` (recommended for ThreatFlow)
-- **All analyzers:** `./start prod up --all_analyzers` (resource intensive)
-- **With Elasticsearch:** `./start prod up --elastic` (for advanced search)
+- Basic startup: ./start prod up (minimal configuration)
+- With malware analyzers: ./start prod up --malware_tools_analyzers (recommended for ThreatFlow)
+- All analyzers: ./start prod up --all_analyzers (resource intensive)
+- With Elasticsearch: ./start prod up --elastic (for advanced search)
 
-For ThreatFlow, we recommend `--malware_tools_analyzers` as it provides essential malware analysis tools without overwhelming your system.
+For ThreatFlow, we recommend --malware_tools_analyzers as it provides essential malware analysis tools without overwhelming your system.
 
 ### Step 1: Clone and Setup IntelOwl Backend
 
@@ -168,7 +167,7 @@ npm start
 - Middleware API Docs: http://localhost:8030/docs
 - IntelOwl Interface: http://localhost
 
-## 🔄 Restarting the Application
+## Restarting the Application
 
 After initial setup, use these commands to restart ThreatFlow when you reopen your laptop:
 
@@ -193,47 +192,47 @@ npm start
 
 ```bash
 # Quick check all services are running
-curl -s http://localhost:8030/health && echo " ✅ Middleware OK"
-curl -s http://localhost/health && echo " ✅ IntelOwl OK"
-curl -s -I http://localhost:3000 | head -1 && echo " ✅ Frontend OK"
+curl -s http://localhost:8030/health && echo " - Middleware OK"
+curl -s http://localhost/health && echo " - IntelOwl OK"
+curl -s -I http://localhost:3000 | head -1 && echo " - Frontend OK"
 ```
 
-**Note:** IntelOwl may take 1-2 minutes to fully start. The middleware and frontend will be available immediately after running the commands above.
+Note: IntelOwl may take 1-2 minutes to fully start. The middleware and frontend will be available immediately after running the commands above.
 
-## 🎯 How to Use ThreatFlow
+## How to Use ThreatFlow
 
 ### Building Your First Analysis Workflow
 
-1. **Open ThreatFlow Frontend** (http://localhost:3000)
+1. Open ThreatFlow Frontend (http://localhost:3000)
 
-2. **Add File Upload Node:**
-   - Drag "📤 File Upload" from left sidebar onto canvas
+2. Add File Upload Node:
+   - Drag "File Upload" from left sidebar onto canvas
    - Click the node to upload a test file (or drag file onto it)
    - Supported: EXE, PDF, DOC, APK, etc.
 
-3. **Add Analyzer Nodes:**
-   - Drag "🔍 Analyzer" nodes onto canvas
+3. Add Analyzer Nodes:
+   - Drag "Analyzer" nodes onto canvas
    - Select analyzers from dropdown:
-     - **File_Info**: Basic file metadata
-     - **ClamAV**: Antivirus scanning
-     - **VirusTotal_v3_Get_File**: VirusTotal hash lookup
-     - **YARA**: YARA rule matching
-     - **PEiD**: PE file analysis
+     - File_Info: Basic file metadata
+     - ClamAV: Antivirus scanning
+     - VirusTotal_v3_Get_File: VirusTotal hash lookup
+     - YARA: YARA rule matching
+     - PEiD: PE file analysis
 
-4. **Add Conditional Nodes (Phase 4 ✨):**
-   - Drag "🔀 Conditional" node onto canvas
+4. Add Conditional Nodes (Phase 4 Feature):
+   - Drag "Conditional" node onto canvas
    - Connect analyzer output to conditional input
    - Connect conditional TRUE output (green) to downstream analyzers
    - Connect conditional FALSE output (red) to alternative path
    - Supports: malicious/clean verdicts, success/failure, custom conditions
 
-5. **Connect the Nodes:**
+5. Connect the Nodes:
    - Drag from output handle (right side) of File node
    - Connect to input handle (left side) of Analyzer nodes
    - Use conditional nodes to create branching logic
 
-6. **Execute the Workflow:**
-   - Click the "▶️ Execute" button at bottom
+6. Execute the Workflow:
+   - Click the "Execute" button at bottom
    - Monitor real-time progress in status panel
    - View detailed results when complete
    - See which conditional branches executed
@@ -246,9 +245,9 @@ File Upload → File_Info → ClamAV → Conditional: Is Malicious?
                 scan     detected    └─ FALSE → (skip deep analysis)
 ```
 
-**Phase 4 Feature:** The conditional node enables dynamic branching based on ClamAV's verdict, automatically running deep analysis only for malicious files!
+Phase 4 Feature: The conditional node enables dynamic branching based on ClamAV's verdict, automatically running deep analysis only for malicious files!
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -267,12 +266,12 @@ REACT_APP_MAX_FILE_SIZE=104857600         # Max file size (100MB)
 ```
 
 ### IntelOwl Configuration
-- **Database:** PostgreSQL (auto-configured via Docker)
-- **Cache:** Redis (auto-configured via Docker)
-- **Analyzers:** Configure API keys in Admin Panel
-- **Security:** Change default admin password
+- Database: PostgreSQL (auto-configured via Docker)
+- Cache: Redis (auto-configured via Docker)
+- Analyzers: Configure API keys in Admin Panel
+- Security: Change default admin password
 
-## 🧪 Testing & Verification
+## Testing & Verification
 
 ### Test IntelOwl Backend
 ```bash
@@ -311,13 +310,13 @@ curl -I http://localhost:3000
 # Open browser dev tools, look for network/API errors
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues & Solutions
 
 #### 1. IntelOwl Won't Start
-**Symptoms:** `./start prod up --malware_tools_analyzers` fails or containers exit
-**Solutions:**
+Symptoms: ./start prod up --malware_tools_analyzers fails or containers exit
+Solutions:
 ```bash
 # Check Docker resources
 docker system df
@@ -332,16 +331,16 @@ docker logs intelowl_api
 ```
 
 #### 2. API Key Authentication Fails
-**Symptoms:** 401 Unauthorized errors
-**Solutions:**
+Symptoms: 401 Unauthorized errors
+Solutions:
 - Verify token in IntelOwl Admin Panel
-- Check token format: `Authorization: Token YOUR_TOKEN`
+- Check token format: Authorization: Token YOUR_TOKEN
 - Regenerate token if expired
 - Ensure no extra spaces in .env file
 
 #### 3. Middleware Can't Connect to IntelOwl
-**Symptoms:** `Connection refused` or empty analyzer list
-**Solutions:**
+Symptoms: Connection refused or empty analyzer list
+Solutions:
 ```bash
 # Test direct connection
 curl http://localhost/api/playbook
@@ -354,24 +353,24 @@ cat threatflow-middleware/.env
 ```
 
 #### 4. Frontend Shows "Network Error"
-**Symptoms:** Failed to load analyzers or execute workflows
-**Solutions:**
+Symptoms: Failed to load analyzers or execute workflows
+Solutions:
 - Ensure middleware is running on port 8030
 - Check REACT_APP_API_URL in frontend/.env
-- Restart frontend: `npm start`
+- Restart frontend: npm start
 - Check browser console for CORS errors
 
 #### 5. File Upload Fails
-**Symptoms:** Upload rejected or analysis fails
-**Solutions:**
+Symptoms: Upload rejected or analysis fails
+Solutions:
 - Check file size limits (default: 100MB)
 - Verify file type is supported
 - Ensure file is not corrupted
 - Check middleware logs for upload errors
 
 #### 6. Workflow Execution Hangs
-**Symptoms:** Status stays at "running" indefinitely
-**Solutions:**
+Symptoms: Status stays at "running" indefinitely
+Solutions:
 - Check IntelOwl analyzer health
 - Verify selected analyzers are enabled
 - Monitor IntelOwl logs for analyzer errors
@@ -395,29 +394,29 @@ curl -X POST http://localhost:8030/api/execute \
   -F "file=@test.txt" 2>/dev/null || echo "Workflow test failed"
 ```
 
-## 📊 Available Analyzers
+## Available Analyzers
 
 ### File Analyzers (150+)
-- **File_Info**: Basic file information and metadata
-- **ClamAV**: Open-source antivirus engine
-- **VirusTotal_v3_Get_File**: VirusTotal hash lookup
-- **YARA**: Pattern matching with YARA rules
-- **PEiD**: PE file packer/compiler detection
-- **APKiD**: Android APK analysis
-- **Androguard**: Android malware analysis
-- **Qiling**: PE emulation and analysis
-- **CAPA**: Behavioral analysis
-- **Stringsifter**: String analysis and ranking
+- File_Info: Basic file information and metadata
+- ClamAV: Open-source antivirus engine
+- VirusTotal_v3_Get_File: VirusTotal hash lookup
+- YARA: Pattern matching with YARA rules
+- PEiD: PE file packer/compiler detection
+- APKiD: Android APK analysis
+- Androguard: Android malware analysis
+- Qiling: PE emulation and analysis
+- CAPA: Behavioral analysis
+- Stringsifter: String analysis and ranking
 
 ### Observable Analyzers (50+)
-- **DNS**: DNS resolution and analysis
-- **VirusTotal_v3_Get_Observable**: Domain/IP reputation
-- **AbuseIPDB**: IP abuse reports
-- **Shodan**: Internet-connected device search
-- **AlienVault_OTX**: Threat intelligence
-- **URLscan**: Website scanning and analysis
+- DNS: DNS resolution and analysis
+- VirusTotal_v3_Get_Observable: Domain/IP reputation
+- AbuseIPDB: IP abuse reports
+- Shodan: Internet-connected device search
+- AlienVault_OTX: Threat intelligence
+- URLscan: Website scanning and analysis
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### API Key Management
 - Store API keys securely (environment variables)
@@ -437,7 +436,7 @@ curl -X POST http://localhost:8030/api/execute \
 - Implement file retention policies
 - Use secure temporary directories
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Docker Compose Setup
 ```yaml
@@ -460,42 +459,42 @@ services:
 ```
 
 ### Scaling Considerations
-- **IntelOwl**: Scale analyzer containers horizontally
-- **Middleware**: Use Gunicorn with multiple workers
-- **Frontend**: Serve static files via nginx
-- **Database**: Use managed PostgreSQL/Redis
+- IntelOwl: Scale analyzer containers horizontally
+- Middleware: Use Gunicorn with multiple workers
+- Frontend: Serve static files via nginx
+- Database: Use managed PostgreSQL/Redis
 
-## 📚 Documentation & Resources
+## Documentation & Resources
 
 ### Official Documentation
-- **IntelOwl Docs**: https://intelowlproject.github.io/docs/
-- **PyIntelOwl SDK**: https://intelowlproject.github.io/docs/pyintelowl/
-- **FastAPI Docs**: https://fastapi.tiangolo.com/
-- **React Flow Docs**: https://reactflow.dev/
+- IntelOwl Docs: https://intelowlproject.github.io/docs/
+- PyIntelOwl SDK: https://intelowlproject.github.io/docs/pyintelowl/
+- FastAPI Docs: https://fastapi.tiangolo.com/
+- React Flow Docs: https://reactflow.dev/
 
 ### Community Resources
-- **IntelOwl GitHub**: https://github.com/intelowlproject/IntelOwl
-- **IntelOwl Slack**: https://honeynetpublic.slack.com/
-- **ThreatFlow Repository**: [Your repository URL]
+- IntelOwl GitHub: https://github.com/intelowlproject/IntelOwl
+- IntelOwl Slack: https://honeynetpublic.slack.com/
+- ThreatFlow Repository: https://github.com/createunique/ThreatFlow
 
 ### Phase 4 Documentation (Conditional Logic)
-- **Complete Guide**: `Docs/README_PHASE-4.md` (5,000+ lines)
-- **Quick Start**: `Docs/PHASE-4-QUICKSTART.md` (5-minute test)
-- **Summary**: `Docs/PHASE-4-SUMMARY.md` (executive overview)
-- **Checklist**: `Docs/PHASE-4-CHECKLIST.md` (implementation verification)
+- Complete Guide: Docs/README_PHASE-4.md (5,000+ lines)
+- Quick Start: Docs/PHASE-4-QUICKSTART.md (5-minute test)
+- Summary: Docs/PHASE-4-SUMMARY.md (executive overview)
+- Checklist: Docs/PHASE-4-CHECKLIST.md (implementation verification)
 
 ### API References
-- **Middleware API**: http://localhost:8030/docs (Swagger)
-- **IntelOwl API**: http://localhost/api/docs
-- **Frontend Components**: Check component documentation
+- Middleware API: http://localhost:8030/docs (Swagger)
+- IntelOwl API: http://localhost/api/docs
+- Frontend Components: Check component documentation
 
-## 🤝 Contributing
+## Contributing
 
-1. **Fork the repository**
-2. **Create feature branch**: `git checkout -b feature/new-analyzer`
-3. **Make changes** with proper testing
-4. **Update documentation**
-5. **Submit pull request**
+1. Fork the repository
+2. Create feature branch: git checkout -b feature/new-analyzer
+3. Make changes with proper testing
+4. Update documentation
+5. Submit pull request
 
 ### Development Guidelines
 - Follow existing code structure
@@ -504,33 +503,30 @@ services:
 - Use type hints (Python) and TypeScript types
 - Handle errors gracefully
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **IntelOwl Project**: For the comprehensive malware analysis platform
-- **Certego**: For developing and maintaining IntelOwl
-- **The Honeynet Project**: For hosting the public demo
-- **Open Source Community**: For the amazing tools and libraries
+- IntelOwl Project: For the comprehensive malware analysis platform
+- Certego: For developing and maintaining IntelOwl
+- The Honeynet Project: For hosting the public demo
+- Open Source Community: For the amazing tools and libraries
 
-## 📞 Support
+## Support
 
 ### Getting Help
-1. **Check the troubleshooting section** above
-2. **Review the phase-specific READMEs** in `/Docs/`
-3. **Check IntelOwl documentation** for backend issues
-4. **Open an issue** in the repository
+1. Check the troubleshooting section above
+2. Review the phase-specific READMEs in /Docs/
+3. Check IntelOwl documentation for backend issues
+4. Open an issue in the repository
 
 ### Contact Information
-- **Project Issues**: GitHub Issues
-- **IntelOwl Support**: IntelOwl Slack or GitHub
-- **Security Issues**: Contact maintainers privately
+- Project Issues: GitHub Issues
+- IntelOwl Support: IntelOwl Slack or GitHub
+- Security Issues: Contact maintainers privately
 
 ---
 
-**Last Updated:** November 23, 2025
-**Version:** Phase 4 Complete - Conditional Logic Added
-**Status:** ✅ Fully Functional with Dynamic Branching</content>
-<parameter name="filePath">/home/anonymous/COLLEGE/ThreatFlow/README.md
+Last Updated: November 23, 2025
