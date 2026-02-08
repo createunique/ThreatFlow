@@ -83,6 +83,8 @@ const distributeResultsToResultNodes = (
   // Collect all analyzer reports (from all stages)
   const allAnalyzerReports = collectAllAnalyzerReports(allResults);
   console.log('[TREE] Collected ' + allAnalyzerReports.length + ' analyzer reports');
+  console.log('[TREE] All results structure:', JSON.stringify(allResults, null, 2));
+  console.log('[TREE] Stage routing:', JSON.stringify(stageRouting, null, 2));
 
   // STRATEGY 2: For each Result node, compute path analyzers via DFS
   resultNodes.forEach(resultNode => {
@@ -98,15 +100,11 @@ const distributeResultsToResultNodes = (
       return;
     }
 
-    // CORE ALGORITHM: Find ALL analyzers on paths from File to Result
-    // BUT only include analyzers from EXECUTED stages (conditional branches)
-    const pathAnalyzers = findAllAnalyzersInPaths(
-      fileNode.id,
+    // CORE ALGORITHM: Find analyzers for this specific result node using stage routing
+    const pathAnalyzers = stageRouting ? findAnalyzersForResultNode(
       resultNode.id,
-      nodes,
-      edges,
-      stageRouting  // Pass stageRouting to filter by executed stages
-    );
+      stageRouting
+    ) : [];
 
     if (pathAnalyzers.length === 0) {
       updateNode(resultNode.id, {
@@ -123,6 +121,11 @@ const distributeResultsToResultNodes = (
     const filteredReports = allAnalyzerReports.filter(report =>
       pathAnalyzers.includes(report.name)
     );
+    
+    console.log('[FILTER] For result ' + resultNode.id + ':');
+    console.log('  Expected analyzers:', pathAnalyzers);
+    console.log('  Available reports:', allAnalyzerReports.map(r => ({ name: r.name, status: r.status })));
+    console.log('  Filtered reports:', filteredReports.map(r => ({ name: r.name, status: r.status })));
 
     updateNode(resultNode.id, {
       jobId: allResults.job_id ?? null,
@@ -142,7 +145,16 @@ const distributeResultsToResultNodes = (
 
 /**
  * STRATEGY 1: Compute which Result nodes executed
- * For conditional workflows, only consider target_nodes from conditional stages (not initial stages)
+ * 
+ * For conditional workflows:
+ * - Stage 0 (pre-conditional) targets ALL result nodes - but doesn't determine execution
+ * - Conditional stages (single target) determine which branch ACTUALLY executed
+ * - A result node is "executed" only if its dedicated conditional stage executed
+ * 
+ * Logic:
+ * 1. First collect ALL targets from ALL executed stages
+ * 2. Then identify "conditional targets" (stages with single target_node)
+ * 3. Remove result nodes whose conditional stage was NOT executed
  */
 const computeExecutedResultNodes = (
   stageRouting: StageRouting[] | undefined,
@@ -154,20 +166,39 @@ const computeExecutedResultNodes = (
     return allResultNodeIds;
   }
 
-  const executedNodes = new Set<string>();
-  
+  // Step 1: Collect ALL target_nodes from ALL executed stages
+  const allExecutedTargets = new Set<string>();
   stageRouting.forEach(routing => {
     if (routing.executed && routing.target_nodes) {
-      // For conditional workflows, only consider stages with single target_nodes
-      // (conditional branches), not initial stages with all target_nodes
-      if (routing.target_nodes.length === 1) {
-        routing.target_nodes.forEach(nodeId => {
-          executedNodes.add(nodeId);
-        });
-        console.log(`[STRATEGY 1] Added result node ${routing.target_nodes[0]} from conditional stage ${routing.stage_id}`);
-      } else {
-        console.log(`[STRATEGY 1] Skipped stage ${routing.stage_id} with ${routing.target_nodes.length} target_nodes (likely initial stage)`);
-      }
+      routing.target_nodes.forEach(nodeId => allExecutedTargets.add(nodeId));
+    }
+  });
+  console.log('[STRATEGY 1] All executed targets (from all stages):', Array.from(allExecutedTargets));
+
+  // Step 2: Identify conditional stages (single target) and track execution status
+  const conditionalTargets = new Map<string, boolean>(); // nodeId -> was executed?
+  stageRouting.forEach(routing => {
+    if (routing.target_nodes && routing.target_nodes.length === 1) {
+      const targetNode = routing.target_nodes[0];
+      // Use OR logic: if any conditional stage targeting this node executed, it's executed
+      const currentStatus = conditionalTargets.get(targetNode) || false;
+      conditionalTargets.set(targetNode, currentStatus || routing.executed);
+      console.log(`[STRATEGY 1] Conditional stage ${routing.stage_id} targets ${targetNode}, executed: ${routing.executed}`);
+    }
+  });
+  console.log('[STRATEGY 1] Conditional targets map:', Object.fromEntries(conditionalTargets));
+
+  // Step 3: Build final executed set
+  // A result node is executed if it was targeted by an executed conditional stage
+  // (Stage 0 doesn't determine which result nodes execute - only conditional stages do)
+  const executedNodes = new Set<string>();
+  
+  conditionalTargets.forEach((wasExecuted, targetNode) => {
+    if (wasExecuted) {
+      executedNodes.add(targetNode);
+      console.log(`[STRATEGY 1] Added ${targetNode} - its conditional stage executed`);
+    } else {
+      console.log(`[STRATEGY 1] Skipped ${targetNode} - its conditional stage did NOT execute`);
     }
   });
 
@@ -177,105 +208,40 @@ const computeExecutedResultNodes = (
 };
 
 /**
- * STRATEGY 2: DFS to find ALL analyzers on paths from root to leaf
+ * STRATEGY 2: Find analyzers for a specific result node
  * 
- * Finds all unique analyzers across ALL paths from startNodeId to targetNodeId
- * BUT only includes analyzers from stages that were actually EXECUTED
- * (important for conditional workflows where some branches are skipped)
+ * For conditional workflows, each result node should only get analyzers from:
+ * 1. Stage 0 (pre-conditional) - always included if executed
+ * 2. The specific conditional stage that targets this result node (if executed)
  * 
- * Algorithm: Depth-First Search with backtracking + execution filtering
- * - Explores all possible paths from root to target
- * - Collects analyzers encountered on each path
- * - Filters out analyzers from non-executed conditional branches
- * - Returns union of analyzers from executed paths only
- * 
- * Time Complexity: O(V + E) where V = nodes, E = edges
- * Space Complexity: O(V) for visited set and path tracking
+ * This is more accurate than DFS because it uses execution metadata, not graph structure.
  */
-const findAllAnalyzersInPaths = (
-  startNodeId: string,
-  targetNodeId: string,
-  nodes: CustomNode[],
-  edges: Edge[],
-  stageRouting?: StageRouting[]  // Optional: filter by executed stages
+const findAnalyzersForResultNode = (
+  resultNodeId: string,
+  stageRouting: StageRouting[]
 ): string[] => {
-  const allPaths: string[][] = [];
-  const visited = new Set<string>();
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const analyzers = new Set<string>();
 
-  // Get executed analyzers from stage routing (for conditional workflows)
-  const executedAnalyzers = new Set<string>();
-  if (stageRouting) {
-    stageRouting.forEach(routing => {
-      if (routing.executed && routing.analyzers) {
-        routing.analyzers.forEach(analyzer => executedAnalyzers.add(analyzer));
-      }
-    });
-    console.log('[DFS] Executed analyzers from stages:', Array.from(executedAnalyzers));
-  }
-
-  /**
-   * DFS recursive traversal
-   */
-  const dfs = (currentNodeId: string, currentPath: string[]) => {
-    // Cycle detection
-    if (visited.has(currentNodeId)) {
+  stageRouting.forEach(routing => {
+    if (!routing.executed || !routing.analyzers) {
       return;
     }
 
-    const currentNode = nodeMap.get(currentNodeId);
-    if (!currentNode) {
-      return;
+    // Stage 0 (pre-conditional) always applies to all result nodes
+    if (routing.stage_id === 0) {
+      routing.analyzers.forEach(analyzer => analyzers.add(analyzer));
+      console.log(`[RESULT ${resultNodeId}] Added Stage 0 analyzers:`, routing.analyzers);
     }
-
-    // Collect analyzer if current node is an Analyzer
-    const pathWithCurrent = [...currentPath];
-    if (currentNode.type === 'analyzer') {
-      const analyzerName = (currentNode.data as any)?.analyzer;
-      if (analyzerName) {
-        // For conditional workflows, only include analyzers from executed stages
-        if (!stageRouting || executedAnalyzers.has(analyzerName)) {
-          pathWithCurrent.push(analyzerName);
-        } else {
-          console.log(`[DFS] Skipping non-executed analyzer: ${analyzerName}`);
-        }
-      }
+    // Conditional stages only apply to their specific target result nodes
+    else if (routing.target_nodes && routing.target_nodes.includes(resultNodeId)) {
+      routing.analyzers.forEach(analyzer => analyzers.add(analyzer));
+      console.log(`[RESULT ${resultNodeId}] Added conditional stage ${routing.stage_id} analyzers:`, routing.analyzers);
     }
-
-    // BASE CASE: Reached target Result node
-    if (currentNodeId === targetNodeId) {
-      allPaths.push(pathWithCurrent);
-      return; // Don't explore further from Result node
-    }
-
-    // Mark as visited for this path
-    visited.add(currentNodeId);
-
-    // RECURSIVE CASE: Explore all outgoing edges
-    const outgoingEdges = edges.filter(e => e.source === currentNodeId);
-    for (const edge of outgoingEdges) {
-      dfs(edge.target, pathWithCurrent);
-    }
-
-    // Backtrack: Allow other paths to visit this node
-    visited.delete(currentNodeId);
-  };
-
-  // Start DFS from root
-  dfs(startNodeId, []);
-
-  // Merge analyzers from all discovered paths
-  const uniqueAnalyzers = new Set<string>();
-  allPaths.forEach(path => {
-    path.forEach(analyzer => uniqueAnalyzers.add(analyzer));
   });
 
-  console.log(
-    '[DFS] Found ' + allPaths.length + ' path(s) from ' + startNodeId + ' to ' + targetNodeId +
-    ', analyzers: [' + Array.from(uniqueAnalyzers).join(', ') + ']'
-  );
-
-  return Array.from(uniqueAnalyzers);
+  const result = Array.from(analyzers);
+  console.log(`[RESULT ${resultNodeId}] Final analyzers:`, result);
+  return result;
 };
 
 /**
@@ -397,8 +363,11 @@ const updateConditionalNodeResults = (
 const collectAllAnalyzerReports = (allResults: any): any[] => {
   const reports: any[] = [];
   
+  console.log('[REPORTS] Raw allResults structure:', JSON.stringify(allResults, null, 2));
+  
   // Handle both flat and nested result structures
   if (allResults.analyzer_reports && Array.isArray(allResults.analyzer_reports)) {
+    console.log('[REPORTS] Found flat analyzer_reports:', allResults.analyzer_reports.length);
     reports.push(...allResults.analyzer_reports);
   }
   
@@ -406,6 +375,7 @@ const collectAllAnalyzerReports = (allResults: any): any[] => {
   Object.keys(allResults).forEach(key => {
     const stageData = allResults[key];
     if (stageData && typeof stageData === 'object' && stageData.analyzer_reports && Array.isArray(stageData.analyzer_reports)) {
+      console.log(`[REPORTS] Found nested analyzer_reports in key '${key}':`, stageData.analyzer_reports.length);
       reports.push(...stageData.analyzer_reports);
     }
   });
@@ -543,9 +513,39 @@ export const useWorkflowExecution = () => {
       // Check if workflow has conditionals
       const hasConditionals = nodes.some(node => node.type === 'conditional');
       
+      // For conditional workflows, collect results from ALL executed jobs
+      let allResults = finalStatus.results;
+      if (hasConditionals && response.job_ids && response.job_ids.length > 1) {
+        console.log('[JOBS] Collecting results from all executed jobs in conditional workflow');
+        console.log('[JOBS] Job IDs from response:', response.job_ids);
+        
+        // Fetch results from all jobs
+        const allJobResults: any[] = [];
+        for (const jobId of response.job_ids) {
+          try {
+            console.log(`[JOBS] Fetching results for job ${jobId}`);
+            const jobStatus = await api.pollJobStatus(jobId, () => {}, 1, AbortSignal.timeout(5000));
+            if (jobStatus.results) {
+              allJobResults.push(jobStatus.results);
+              console.log(`[JOBS] Got results for job ${jobId}:`, jobStatus.results.analyzer_reports?.length || 0, 'reports');
+            }
+          } catch (error) {
+            console.warn(`[JOBS] Failed to fetch results for job ${jobId}:`, error);
+          }
+        }
+        
+        // Combine all results
+        allResults = {
+          ...finalStatus.results,
+          analyzer_reports: allJobResults.flatMap(jobResult => jobResult.analyzer_reports || [])
+        };
+        
+        console.log('[JOBS] Combined analyzer reports:', allResults.analyzer_reports?.length || 0);
+      }
+      
       // Distribute results to appropriate result nodes using DFS algorithm
       distributeResultsToResultNodes(
-        finalStatus.results,
+        allResults,
         finalStatus.stagerouting,
         hasConditionals,
         nodes,
